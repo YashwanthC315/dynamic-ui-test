@@ -1,7 +1,7 @@
-# Payslip and Fee Chat Use Cases
+# Fee Collection Form Chat Use Cases
 
 Purpose: capture realistic chat use cases before changing chat behavior.
-Scope: student lookup, payslip or receipt intent, fee collection intent, sanity checks, fallback behavior, and edge cases.
+Scope: student lookup, receipt intent, fee collection form intent, sanity checks, fallback behavior, and edge cases.
 Format: one-line use cases that can later map to prompt rules, UX copy, and tests.
 Naming rule: avoid aliases like "student A" and prefer student ID or full name plus disambiguation.
 
