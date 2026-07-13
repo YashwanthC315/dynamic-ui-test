@@ -13,19 +13,23 @@
   <div class="form-grid">
     <label class="field wide">
       <span>Search Student</span>
-      <input type="search" placeholder="search" formControlName="studentSearch" />
+      <input
+        type="search"
+        placeholder="Search or choose student"
+        formControlName="studentSearch"
+        list="studentNameOptions"
+        (change)="commitStudentSearchSelection()"
+        (keyup.enter)="commitStudentSearchSelection()"
+      />
+      <datalist id="studentNameOptions">
+        <option *ngFor="let student of students" [value]="student.name + ' (' + student.id + ')'">{{ student.course }}</option>
+      </datalist>
     </label>
 
     <label class="field">
       <span>Date</span>
       <input type="date" formControlName="receiptDate" />
     </label>
-
-    <div class="suggestions" *ngIf="filteredStudents.length > 0">
-      <button type="button" class="student-pill" *ngFor="let student of filteredStudents" (click)="selectStudent(student)">
-        {{ student.name }} ({{ student.id }}) - {{ student.course }}
-      </button>
-    </div>
   </div>
 
   <section class="student-info" *ngIf="selectedStudent as student">

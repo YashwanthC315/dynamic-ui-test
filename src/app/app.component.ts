@@ -20,16 +20,17 @@ export class AppComponent {
   chatMessages: ChatMessage[] = [
     {
       role: 'assistant',
-      text: 'I am currently focused on fee collection. Try: "pick student a", "set amount 500", "mode cash", or "show paid tab".',
+      text: 'I am currently focused on fee collection. Try: "pick 20P074", "set amount 500", "mode cash", "show paid tab", or "help".',
       time: this.timeNow(),
     },
   ];
 
   readonly quickCommands = [
-    'Pick student A fee collection',
+    'Pick 20P074',
     'Set amount 500',
     'Mode cash',
     'Show paid tab',
+    'What is selected',
   ];
 
   handlePrompt(prompt: string): void {
