@@ -152,7 +152,9 @@ Naming rule: avoid aliases like "student A" and prefer student ID or full name p
 ## Future-Ready Use Cases
 
 - User asks for receipt PDF and chat can route to export flow when feature is added.
-- User asks for installment plan and chat can route to installment wizard when available.
-- User asks for parent notification and chat can route to communication service later.
-- User asks for scholarship adjustment and chat can invoke policy engine when integrated.
-- User asks for cross-student summary and chat can open reporting view in future versions.
+- User is able to view multiple forms
+- User types "help", "commands", or "what can you do"
+- User asks "how do I [action]"
+- "Generate receipt", "print receipt", "download PDF", or "export receipt"
+- "Show receipt for [specific date]" or "receipt number XXXX".
+- 
