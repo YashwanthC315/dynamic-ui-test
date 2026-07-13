@@ -1,0 +1,129 @@
+<section class="card" [formGroup]="form">
+  <header class="card-header">
+    <div>
+      <h2>{{ title }}</h2>
+      <p class="subtitle">Fee collection workflow</p>
+    </div>
+    <div class="receipt-box">
+      <strong>Receipt No : #</strong>
+      <span>{{ selectedStudent ? 'Auto-generated on save' : 'Select student first' }}</span>
+    </div>
+  </header>
+
+  <div class="form-grid">
+    <label class="field wide">
+      <span>Search Student</span>
+      <input type="search" placeholder="search" formControlName="studentSearch" />
+    </label>
+
+    <label class="field">
+      <span>Date</span>
+      <input type="date" formControlName="receiptDate" />
+    </label>
+
+    <div class="suggestions" *ngIf="filteredStudents.length > 0">
+      <button type="button" class="student-pill" *ngFor="let student of filteredStudents" (click)="selectStudent(student)">
+        {{ student.name }} ({{ student.id }}) - {{ student.course }}
+      </button>
+    </div>
+  </div>
+
+  <section class="student-info" *ngIf="selectedStudent as student">
+    <div><strong>Student:</strong> {{ student.name }} ({{ student.id }})</div>
+    <div><strong>Course:</strong> {{ student.course }}</div>
+  </section>
+
+  <section class="amount-panel">
+    <div class="field-group">
+      <label class="field">
+        <span>Amount received</span>
+        <input type="number" min="0" step="0.01" formControlName="amountReceived" />
+      </label>
+
+      <label class="field">
+        <span>Payment Mode</span>
+        <select formControlName="paymentMode">
+          <option value="">- Select Mode -</option>
+          <option *ngFor="let mode of paymentModes" [value]="mode">{{ mode | titlecase }}</option>
+        </select>
+      </label>
+    </div>
+
+    <label class="checkbox-line">
+      <input type="checkbox" formControlName="adjustmentAmount" />
+      <span>Adjustment Amt</span>
+    </label>
+
+    <div class="totals">
+      <div><strong>Total selected pending:</strong> {{ selectedPendingFeesTotal | number : '1.2-2' }}</div>
+      <div [class.warn]="pendingDifference !== 0">
+        <strong>Difference (received - selected):</strong> {{ pendingDifference | number : '1.2-2' }}
+      </div>
+    </div>
+  </section>
+
+  <section class="tabs" *ngIf="selectedStudent">
+    <button type="button" [class.active]="activeTab === 'pending'" (click)="activeTab = 'pending'">Pending Fees</button>
+    <button type="button" [class.active]="activeTab === 'paid'" (click)="activeTab = 'paid'">Fees Paid</button>
+  </section>
+
+  <section class="table-wrap" *ngIf="selectedStudent && activeTab === 'pending'">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Description</th>
+          <th>Due Date</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let fee of pendingFees">
+          <td>
+            <input type="checkbox" [checked]="isFeeSelected(fee.id)" (change)="togglePendingFee(fee.id)" />
+          </td>
+          <td>{{ fee.description }}</td>
+          <td>{{ fee.dueDate }}</td>
+          <td>{{ fee.amount | number : '1.2-2' }}</td>
+        </tr>
+        <tr *ngIf="pendingFees.length === 0">
+          <td colspan="4" class="empty">No pending fees for this student.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="table-wrap" *ngIf="selectedStudent && activeTab === 'paid'">
+    <table>
+      <thead>
+        <tr>
+          <th>Receipt No</th>
+          <th>Description</th>
+          <th>Paid On</th>
+          <th>Mode</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let fee of paidFees">
+          <td>{{ fee.receiptNo }}</td>
+          <td>{{ fee.description }}</td>
+          <td>{{ fee.paidOn }}</td>
+          <td>{{ fee.mode | titlecase }}</td>
+          <td>{{ fee.amount | number : '1.2-2' }}</td>
+        </tr>
+        <tr *ngIf="paidFees.length === 0">
+          <td colspan="5" class="empty">No paid records yet.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="actions">
+    <button type="button" class="primary" [disabled]="!canSave" (click)="saveTransaction()">Save</button>
+    <p class="hint" *ngIf="!canSave">
+      Save is enabled only when amount received equals selected pending total, payment mode is selected, and at least one pending fee is checked.
+    </p>
+    <p class="success" *ngIf="saveClicked && canSave">Transaction saved and moved to Fees Paid tab.</p>
+  </footer>
+</section>

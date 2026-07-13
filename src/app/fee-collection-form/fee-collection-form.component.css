@@ -1,0 +1,240 @@
+:host {
+  display: block;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #d8e3f5;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 30px rgba(17, 46, 86, 0.08);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #0f2f5f;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: #4d6384;
+}
+
+.receipt-box {
+  text-align: right;
+  display: grid;
+  gap: 4px;
+  color: #38537a;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field.wide {
+  grid-column: 1 / 2;
+}
+
+.field span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #23406c;
+}
+
+input,
+select,
+button {
+  font: inherit;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #c4d6f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+input:focus,
+select:focus {
+  outline: 2px solid #9ec3ff;
+  border-color: #7faeff;
+}
+
+.suggestions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.student-pill {
+  border: 1px solid #bdd2f6;
+  background: #f4f8ff;
+  color: #173a6b;
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.student-pill:hover {
+  background: #e7f0ff;
+}
+
+.student-info {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 4px solid #4f8df3;
+  background: #f5f9ff;
+  display: grid;
+  gap: 4px;
+}
+
+.amount-panel {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #d8e3f5;
+  border-radius: 10px;
+  background: #fcfdff;
+}
+
+.field-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.checkbox-line {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #23406c;
+}
+
+.totals {
+  margin-top: 10px;
+  display: grid;
+  gap: 4px;
+  color: #163766;
+}
+
+.warn {
+  color: #a15200;
+}
+
+.tabs {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.tabs button {
+  border: 1px solid #b8cced;
+  background: #f5f8ff;
+  color: #23406c;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  border-color: #3076ef;
+  background: #3076ef;
+  color: #fff;
+}
+
+.table-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+  border: 1px solid #d8e3f5;
+  border-radius: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid #edf2fb;
+  text-align: left;
+  padding: 10px 12px;
+}
+
+th {
+  background: #f8fbff;
+  color: #254574;
+}
+
+.empty {
+  color: #667fa4;
+  text-align: center;
+}
+
+.actions {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.primary {
+  width: fit-content;
+  border: 1px solid #2b71e8;
+  background: #2b71e8;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  background: #aac5ef;
+  border-color: #aac5ef;
+  cursor: not-allowed;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4a6287;
+}
+
+.success {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #0c6a34;
+}
+
+@media (max-width: 900px) {
+  .form-grid,
+  .field-group {
+    grid-template-columns: 1fr;
+  }
+
+  .card-header {
+    flex-direction: column;
+  }
+
+  .receipt-box {
+    text-align: left;
+  }
+}

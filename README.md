@@ -1,42 +1,53 @@
 # Dynamic UI Test (Angular)
 
-This repository contains a simple Angular UI prototype with:
+This repository contains a chat-driven operations UI built with Angular. The left panel is a reusable chat component, and the right panel currently hosts a dedicated fee collection form component.
 
-- A chat-like input panel for natural language prompts.
-- Keyword-based prompt parsing (for now) to detect form requests.
-- Dynamic loading of prebuilt forms into the main content area.
-- Replacement behavior: loading a new form replaces the currently visible form.
+Current goal: focus on one production-like workflow (fee collection) while keeping chat independent for site-wide reuse.
 
-This aligns with your current phase before integrating a real agent backend.
+## Current Scope
 
-## Implemented Forms
+The app currently focuses on:
 
-The app includes these prebuilt forms:
+- Fee Collection
 
-- Payslip Request Form
-- Personal Details Form
-- Address Update Form
-- Leave Request Form
+The chat drives the fee collection workflow by interpreting predefined commands.
 
-Example prompts you can type in chat:
+## Component Structure
 
-- `fetch me form for payslip`
-- `show details form`
-- `load address form`
-- `open leave form`
+- `ChatPanelComponent`: generic/reusable chat UI and message input/output
+- `FeeCollectionFormComponent`: fee collection form state and transaction logic
+- `AppComponent`: orchestration layer that routes chat prompts to the fee form
 
-## How Prompt Matching Works
+## Example Prompts
 
-The app currently uses simple natural-language keyword detection in the frontend.
+Use quick commands or type prompts in chat, such as:
 
-- `payslip` or `salary` -> Payslip Request Form
-- `detail`, `personal`, or `profile` -> Personal Details Form
-- `address` or `location` -> Address Update Form
-- `leave`, `vacation`, or `time off` -> Leave Request Form
+- `pick student a`
+- `set amount 500`
+- `mode cash`
+- `show paid tab`
 
-If no keyword matches, the assistant responds with a guidance message in the chat log.
+## Prompt Interpretation (Current Logic)
 
-## Run Locally (localhost)
+Prompt matching is keyword-based inside the fee collection component:
+
+- Student selection by phrases like `student a` or explicit IDs like `20p074`
+- Payment mode shortcuts: `cash`, `cheque`, `online`
+- Amount parsing from numeric prompts
+- Tab switching commands: `show paid tab`, `show pending tab`
+
+Additional behavior:
+
+- Unknown prompts return a fee-focused guidance message in chat.
+
+## Fee Collection Features
+
+- Student search and selection
+- Pending vs paid fee tabs
+- Amount and payment mode handling
+- Save validation (amount must match selected pending total)
+
+## Run Locally
 
 Prerequisites:
 
@@ -46,38 +57,44 @@ Steps:
 
 1. Install dependencies:
 
-	```bash
-	npm install
-	```
+	 ```bash
+	 npm install
+	 ```
 
-2. Start dev server on localhost:
+2. Start dev server:
 
-	```bash
-	npm start
-	```
+	 ```bash
+	 npm start
+	 ```
 
-3. Open:
+3. Open in browser:
 
-	`http://localhost:4200/`
+	 `http://localhost:4200/`
 
-The app hot-reloads as you edit files.
+The app hot-reloads on file changes.
 
 ## Helpful Commands
 
 - Run tests:
 
-  ```bash
-  npm test
-  ```
+	```bash
+	npm test
+	```
 
 - Build production bundle:
 
-  ```bash
-  npm run build
-  ```
+	```bash
+	npm run build
+	```
 
-## Current Limitations and Next Step
+## Current Limitations
 
-- Current behavior supports one active form at a time (replacement model).
-- A future enhancement can maintain multiple forms simultaneously in tabs or stacked cards.
-- Another future enhancement is replacing keyword parsing with an agent/API-driven intent resolver.
+- Prompt parsing is rule/keyword based, not model-based intent parsing.
+- Chat and fee form are connected in-memory through the root component.
+- No persistence layer or backend orchestration is connected yet.
+
+## Next Enhancements
+
+- Add richer intent extraction for fee collection commands and validation feedback.
+- Add API integration for student search, pending fees, and receipt save operations.
+- Reuse `ChatPanelComponent` in other pages and connect via a shared chat service.

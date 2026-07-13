@@ -17,22 +17,28 @@ describe('AppComponent', () => {
   it('should have the expected title', () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('Dynamic Form Fetcher');
+    expect(app.title).toEqual('Dynamic Operations Console');
   });
 
-  it('should load payslip form from natural language prompt', () => {
+  it('should append user and assistant messages when handling a prompt', () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    app.promptInput = 'fetch me form for payslip';
-    app.submitPrompt();
+    fixture.detectChanges();
 
-    expect(app.activeForm?.key).toBe('payslip');
+    const initialCount = app.chatMessages.length;
+    app.handlePrompt('pick student a');
+
+    expect(app.chatMessages.length).toBe(initialCount + 2);
+    expect(app.chatMessages[initialCount].role).toBe('user');
+    expect(app.chatMessages[initialCount].text).toBe('pick student a');
+    expect(app.chatMessages[initialCount + 1].role).toBe('assistant');
   });
 
-  it('should render page title', () => {
+  it('should render chat and fee collection components', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Dynamic Form Fetcher');
+    expect(compiled.querySelector('app-chat-panel')).toBeTruthy();
+    expect(compiled.querySelector('app-fee-collection-form')).toBeTruthy();
   });
 });

@@ -1,111 +1,14 @@
-<main class="shell">
-  <section class="hero">
-    <p class="eyebrow">Angular Dynamic UI Prototype</p>
-    <h1>{{ title }}</h1>
-    <p class="subtext">
-      Type a natural language request in the chat and a matching prebuilt form is loaded into the panel.
-    </p>
-  </section>
-
+<main class="page">
   <section class="workspace">
-    <aside class="chat-panel">
-      <div class="chat-header">
-        <h2>Form Assistant</h2>
-        <p>Prompt examples: "fetch me form for payslip"</p>
-      </div>
+    <app-chat-panel
+      [title]="title"
+      [subtitle]="subtitle"
+      [placeholder]="chatPlaceholder"
+      [quickCommands]="quickCommands"
+      [messages]="chatMessages"
+      (promptSubmitted)="handlePrompt($event)"
+    ></app-chat-panel>
 
-      <div class="chip-row">
-        <button type="button" (click)="loadFormFromChip('payslip')">Payslip</button>
-        <button type="button" (click)="loadFormFromChip('details')">Details</button>
-        <button type="button" (click)="loadFormFromChip('address')">Address</button>
-        <button type="button" (click)="loadFormFromChip('leave')">Leave</button>
-      </div>
-
-      <div class="chat-log" aria-live="polite">
-        @for (message of chatMessages; track $index) {
-          <article class="message" [class.user]="message.role === 'user'">
-            <p>{{ message.text }}</p>
-          </article>
-        }
-      </div>
-
-      <form class="chat-input" (ngSubmit)="submitPrompt()">
-        <input
-          type="text"
-          name="promptInput"
-          [(ngModel)]="promptInput"
-          placeholder="Type your request..."
-          autocomplete="off"
-        />
-        <button type="submit">Send</button>
-      </form>
-    </aside>
-
-    <section class="form-panel">
-      @if (activeForm) {
-        <header class="form-head">
-          <h2>{{ activeForm.title }}</h2>
-          <p>{{ activeForm.description }}</p>
-        </header>
-
-        <form class="dynamic-form" (ngSubmit)="onFormSubmit()" #renderedForm="ngForm">
-          @for (field of activeForm.fields; track field.key) {
-            <label [for]="field.key">
-              <span>{{ field.label }}</span>
-
-              @switch (field.type) {
-                @case ('textarea') {
-                  <textarea
-                    [id]="field.key"
-                    [name]="field.key"
-                    [required]="field.required || false"
-                    [placeholder]="field.placeholder || ''"
-                    [(ngModel)]="activeFormModel[field.key]"
-                  ></textarea>
-                }
-                @case ('select') {
-                  <select
-                    [id]="field.key"
-                    [name]="field.key"
-                    [required]="field.required || false"
-                    [(ngModel)]="activeFormModel[field.key]"
-                  >
-                    <option value="" disabled>Select one...</option>
-                    @for (option of field.options; track option) {
-                      <option [value]="option">{{ option }}</option>
-                    }
-                  </select>
-                }
-                @default {
-                  <input
-                    [id]="field.key"
-                    [name]="field.key"
-                    [type]="field.type"
-                    [required]="field.required || false"
-                    [placeholder]="field.placeholder || ''"
-                    [(ngModel)]="activeFormModel[field.key]"
-                  />
-                }
-              }
-            </label>
-          }
-
-          <button class="submit-btn" type="submit" [disabled]="!renderedForm.valid">
-            Submit Form
-          </button>
-        </form>
-
-        @if (showSubmitToast) {
-          <p class="toast">Form submitted (demo only).</p>
-        }
-      } @else {
-        <div class="empty-state">
-          <h2>No form loaded yet</h2>
-          <p>
-            Ask for a form in chat to load one here. Loading a new form replaces the current one in this version.
-          </p>
-        </div>
-      }
-    </section>
+    <app-fee-collection-form></app-fee-collection-form>
   </section>
 </main>

@@ -1,0 +1,125 @@
+:host {
+  display: block;
+}
+
+.chat-panel {
+  background: #ffffff;
+  border: 1px solid #d8e3f5;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 30px rgba(17, 46, 86, 0.08);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 12px;
+  min-height: 80vh;
+  max-height: calc(100vh - 40px);
+}
+
+.chat-header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0f2f5f;
+}
+
+.chat-header p {
+  margin: 6px 0 0;
+  color: #4d6384;
+  font-size: 0.92rem;
+}
+
+.quick-command-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-btn {
+  border: 1px solid #bcd2f6;
+  background: #f4f9ff;
+  color: #173a6b;
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+
+.quick-btn:hover {
+  background: #e7f1ff;
+}
+
+.chat-thread {
+  border: 1px solid #e4ecf9;
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #fbfdff;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.chat-message {
+  max-width: 94%;
+  background: #eef5ff;
+  border: 1px solid #d6e5ff;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.chat-message.user {
+  margin-left: auto;
+  background: #e8fff4;
+  border-color: #bdeed5;
+}
+
+.chat-message p {
+  margin: 0;
+  color: #1a3f70;
+  line-height: 1.35;
+}
+
+.chat-message small {
+  margin-top: 5px;
+  display: block;
+  color: #5f7699;
+}
+
+.chat-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.chat-input-row input,
+.primary {
+  font: inherit;
+}
+
+.chat-input-row input {
+  border: 1px solid #c4d6f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.chat-input-row input:focus {
+  outline: 2px solid #9ec3ff;
+  border-color: #7faeff;
+}
+
+.primary {
+  border: 1px solid #2b71e8;
+  background: #2b71e8;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .chat-panel {
+    min-height: auto;
+    max-height: none;
+  }
+}
