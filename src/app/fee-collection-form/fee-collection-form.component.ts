@@ -109,6 +109,8 @@ export class FeeCollectionFormComponent {
   activeTab: 'pending' | 'paid' = 'pending';
   saveClicked = false;
   private pendingDisambiguation: Student[] = [];
+  private pendingSuggestedPrompt: string | null = null;
+  private lastSavedFingerprint: string | null = null;
 
   constructor(private readonly fb: FormBuilder) {
     this.form.controls.amountReceived.valueChanges.subscribe(() => {
@@ -154,6 +156,20 @@ export class FeeCollectionFormComponent {
       return 'Please enter a command. Try "help" to see supported fee collection commands.';
     }
 
+    if (this.pendingSuggestedPrompt) {
+      if (this.isAffirmative(normalized)) {
+        const suggested = this.pendingSuggestedPrompt;
+        this.pendingSuggestedPrompt = null;
+        const result = this.handleChatPrompt(suggested);
+        return `Using suggested command "${suggested}". ${result}`;
+      }
+
+      if (this.isNegative(normalized)) {
+        this.pendingSuggestedPrompt = null;
+        return 'Okay, suggestion cancelled. Please rephrase your command.';
+      }
+    }
+
     if (this.pendingDisambiguation.length > 0) {
       const disambiguationReply = this.resolveDisambiguation(normalized);
       if (disambiguationReply) {
@@ -167,6 +183,15 @@ export class FeeCollectionFormComponent {
 
     if (this.isOutOfScopeIntent(normalized)) {
       return 'I can help only with fee collection and receipt actions in this screen. Try: pick <student id>, set amount 500, mode cash, show paid tab, or save.';
+    }
+
+    const recoveryReply = this.handleRecoveryPrompt(normalized);
+    if (recoveryReply) {
+      return recoveryReply;
+    }
+
+    if (this.hasContradictoryTabIntent(normalized)) {
+      return 'Did you mean show paid tab or show pending tab? Reply with one option.';
     }
 
     if (normalized.includes('start over completely') || normalized.includes('reset all')) {
@@ -209,6 +234,15 @@ export class FeeCollectionFormComponent {
       }
 
       this.activeTab = 'paid';
+      if (this.paidFees.length === 0) {
+        return `Opened Fees Paid tab for ${this.selectedStudent.name}. No paid records yet.`;
+      }
+
+      if (normalized.includes('latest receipt') || normalized.includes('show latest receipt')) {
+        const latest = this.paidFees[0];
+        return `Latest receipt for ${this.selectedStudent.name}: ${latest.receiptNo}, amount ${latest.amount.toFixed(2)}, paid on ${latest.paidOn}.`;
+      }
+
       return `Opened Fees Paid tab for ${this.selectedStudent.name}.`;
     }
 
@@ -218,6 +252,15 @@ export class FeeCollectionFormComponent {
       }
 
       this.activeTab = 'pending';
+      if (this.pendingFees.length === 0) {
+        return `Opened Pending Fees tab for ${this.selectedStudent.name}. No pending fees for this student.`;
+      }
+
+      const dataQualityNote = this.getDataQualityNote();
+      if (dataQualityNote) {
+        return `Opened Pending Fees tab for ${this.selectedStudent.name}. ${dataQualityNote}`;
+      }
+
       return `Opened Pending Fees tab for ${this.selectedStudent.name}.`;
     }
 
@@ -260,7 +303,9 @@ export class FeeCollectionFormComponent {
       }
 
       const totalPending = this.pendingFees.reduce((sum, fee) => sum + fee.amount, 0);
-      return `Selected pending total: ${this.selectedPendingFeesTotal.toFixed(2)}. Overall pending total: ${totalPending.toFixed(2)}.`;
+      const dataQualityNote = this.getDataQualityNote();
+      const noteSuffix = dataQualityNote ? ` ${dataQualityNote}` : '';
+      return `Selected pending total: ${this.selectedPendingFeesTotal.toFixed(2)}. Overall pending total: ${totalPending.toFixed(2)}.${noteSuffix}`;
     }
 
     if (normalized.includes('what is selected') || normalized.includes('status') || normalized.includes('summary')) {
@@ -280,6 +325,12 @@ export class FeeCollectionFormComponent {
       return this.selectedStudent
         ? `Fee collection is active for ${this.selectedStudent.name}.`
         : 'Fee collection form is active. Pick a student by ID or full name to continue.';
+    }
+
+    const suggestion = this.suggestPrompt(normalized);
+    if (suggestion) {
+      this.pendingSuggestedPrompt = suggestion;
+      return `Did you mean "${suggestion}"? Reply yes or no.`;
     }
 
     return 'I am focused on fee collection. Try: pick 20P074, set amount 500, mode cash, show pending tab, what is selected, or help.';
@@ -412,7 +463,10 @@ export class FeeCollectionFormComponent {
     }
 
     const mode = this.form.controls.paymentMode.value || 'not set';
-    return `Student: ${this.selectedStudent.name} (${this.selectedStudent.id}), tab: ${this.activeTab}, amount: ${this.amountReceived.toFixed(2)}, mode: ${mode}, selected pending rows: ${this.selectedPendingFeeIds.size}, selected pending total: ${this.selectedPendingFeesTotal.toFixed(2)}.`;
+    const course = this.selectedStudent.course || 'Course not available';
+    const dataQualityNote = this.getDataQualityNote();
+    const noteSuffix = dataQualityNote ? ` ${dataQualityNote}` : '';
+    return `Student: ${this.selectedStudent.name} (${this.selectedStudent.id}), course: ${course}, tab: ${this.activeTab}, amount: ${this.amountReceived.toFixed(2)}, mode: ${mode}, selected pending rows: ${this.selectedPendingFeeIds.size}, selected pending total: ${this.selectedPendingFeesTotal.toFixed(2)}.${noteSuffix}`;
   }
 
   private trySaveFromChat(): string {
@@ -440,7 +494,13 @@ export class FeeCollectionFormComponent {
       return `Amount mismatch: difference is ${this.pendingDifference.toFixed(2)}. Amount received must match selected pending total.`;
     }
 
+    const currentFingerprint = this.currentSaveFingerprint();
+    if (this.lastSavedFingerprint && this.lastSavedFingerprint === currentFingerprint) {
+      return 'Possible duplicate save request detected. This transaction appears to be already saved.';
+    }
+
     this.saveTransaction();
+    this.lastSavedFingerprint = currentFingerprint;
     return `Transaction saved for ${this.selectedStudent.name} and moved to Fees Paid tab.`;
   }
 
@@ -590,6 +650,134 @@ export class FeeCollectionFormComponent {
       normalizedPrompt.includes('cheque') ||
       normalizedPrompt.includes('online')
     );
+  }
+
+  private hasContradictoryTabIntent(normalizedPrompt: string): boolean {
+    const hasPaidIntent = normalizedPrompt.includes('paid');
+    const hasPendingIntent = normalizedPrompt.includes('pending');
+    const hasTabSwitchIntent = normalizedPrompt.includes('show') || normalizedPrompt.includes('tab');
+    return hasTabSwitchIntent && hasPaidIntent && hasPendingIntent;
+  }
+
+  private isAffirmative(normalizedPrompt: string): boolean {
+    return ['yes', 'y', 'yeah', 'yup', 'ok', 'okay', 'sure'].includes(normalizedPrompt);
+  }
+
+  private isNegative(normalizedPrompt: string): boolean {
+    return ['no', 'n', 'nope', 'cancel', 'stop'].includes(normalizedPrompt);
+  }
+
+  private suggestPrompt(normalizedPrompt: string): string | null {
+    const normalizedWords = normalizedPrompt.split(' ').filter(Boolean);
+
+    if (normalizedPrompt.includes('svae')) {
+      return 'save';
+    }
+
+    if (normalizedPrompt.includes('shwo paid')) {
+      return 'show paid tab';
+    }
+
+    if (normalizedPrompt.includes('shwo pending')) {
+      return 'show pending tab';
+    }
+
+    if (normalizedPrompt.includes('mod cash') || normalizedPrompt.includes('mode cahs')) {
+      return 'mode cash';
+    }
+
+    if (normalizedPrompt.includes('fe colletcion') || normalizedPrompt.includes('fee colletcion')) {
+      return 'fee collection';
+    }
+
+    if (normalizedPrompt.includes('tution fee') && (normalizedPrompt.includes('select') || normalizedPrompt.includes('unselect'))) {
+      return normalizedPrompt.replace('tution fee', 'tuition fee');
+    }
+
+    if (normalizedWords.length === 1) {
+      const singleWordMap: Record<string, string> = {
+        paid: 'show paid tab',
+        pending: 'show pending tab',
+      };
+      return singleWordMap[normalizedWords[0]] ?? null;
+    }
+
+    return null;
+  }
+
+  private handleRecoveryPrompt(normalizedPrompt: string): string | null {
+    if (normalizedPrompt.includes('backend lookup fail') || normalizedPrompt.includes('lookup failed')) {
+      return 'Temporary lookup issue detected. Please retry in a moment, or use student ID directly as fallback.';
+    }
+
+    if (normalizedPrompt.includes('student list fail') || normalizedPrompt.includes('student list failed')) {
+      return 'Student list failed to load. Please enter a full student ID manually to continue.';
+    }
+
+    if (normalizedPrompt.includes('network timeout')) {
+      return 'Network timeout noted. No duplicate save was performed. You can safely retry save.';
+    }
+
+    if (normalizedPrompt.includes('retry save after timeout') || normalizedPrompt.includes('retry save')) {
+      if (this.lastSavedFingerprint && this.lastSavedFingerprint === this.currentSaveFingerprint()) {
+        return 'Idempotency check: this transaction already appears saved. No duplicate action taken.';
+      }
+      return 'Retry is safe. Run save again and I will prevent duplicates when signature matches.';
+    }
+
+    if (normalizedPrompt.includes('partial update error')) {
+      return 'Partial update issue noted. Please refresh student data and retry the last action.';
+    }
+
+    return null;
+  }
+
+  private getDataQualityNote(): string | null {
+    if (!this.selectedStudent) {
+      return null;
+    }
+
+    const missingDueDateCount = this.pendingFees.filter((fee) => !fee.dueDate).length;
+    const duplicates = this.findDuplicatePendingFeeDescriptions();
+
+    if (missingDueDateCount > 0 && duplicates.length > 0) {
+      return `Data quality note: ${missingDueDateCount} pending rows have no due date, and duplicate fee lines found for ${duplicates.join(', ')}.`;
+    }
+
+    if (missingDueDateCount > 0) {
+      return `Data quality note: ${missingDueDateCount} pending rows have no due date.`;
+    }
+
+    if (duplicates.length > 0) {
+      return `Data quality note: duplicate pending fee lines found for ${duplicates.join(', ')}.`;
+    }
+
+    if (!this.selectedStudent.course) {
+      return 'Data quality note: Course not available for this student.';
+    }
+
+    return null;
+  }
+
+  private findDuplicatePendingFeeDescriptions(): string[] {
+    const map = new Map<string, number>();
+    for (const fee of this.pendingFees) {
+      const key = this.normalizeFeeText(fee.description);
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+
+    return [...map.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([desc]) => desc);
+  }
+
+  private currentSaveFingerprint(): string {
+    const studentId = this.selectedStudent?.id ?? '';
+    const selectedFeeIds = [...this.selectedPendingFeeIds].sort().join(',');
+    const amount = this.amountReceived.toFixed(2);
+    const mode = this.form.controls.paymentMode.value ?? '';
+    const date = this.form.controls.receiptDate.value ?? '';
+    return `${studentId}|${selectedFeeIds}|${amount}|${mode}|${date}`;
   }
 
   private extractPaymentMode(normalizedPrompt: string): PaymentMode | null {

@@ -125,14 +125,6 @@ Naming rule: avoid aliases like "student A" and prefer student ID or full name p
 - Chat shows concise actionable replies, not verbose paragraphs, for routine updates.
 - Chat response includes next step suggestion when validation fails.
 
-## Security and Safety Use Cases
-
-- User attempts script injection in prompt and chat treats it as plain text.
-- User enters SQL-like string and chat does not execute or echo risky operations.
-- User asks to expose hidden student data and chat only returns permitted fields.
-- User asks to bypass validation and chat refuses non-compliant action.
-- User asks for internal tokens or secrets and chat refuses.
-
 ## Operational Logging Use Cases
 
 - Each prompt stores timestamp, user text, and assistant response for audit trail.
@@ -148,6 +140,16 @@ Naming rule: avoid aliases like "student A" and prefer student ID or full name p
 - Large chat history remains scrollable without UI freeze.
 - Rapid repeated commands do not create duplicate state updates.
 - Debounced search avoids excessive filtering calls while typing.
+
+
+## Deferred Use Cases (Not Testable In Current Setup)
+
+- Security and safety scenarios are deferred until backend integration and access controls are available.
+- User attempts script injection in prompt and chat treats it as plain text.
+- User enters SQL-like string and chat does not execute or echo risky operations.
+- User asks to expose hidden student data and chat only returns permitted fields.
+- User asks to bypass validation and chat refuses non-compliant action.
+- User asks for internal tokens or secrets and chat refuses.
 
 ## Future-Ready Use Cases
 
