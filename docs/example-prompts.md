@@ -112,12 +112,12 @@ Response: "Did you mean pick 23P112? Reply yes or no."
 Status: Planned behavior.
 
 11. Prompt: "chiru"
-Response: "No confident student match found. Try full name or student ID."
-Status: Planned behavior.
+Response: "Please enter valid student name or id"
+Status: Available now.
 
-12. Prompt: "rahool rao"
-Response: "Did you mean Rahul Rao (23P102)? Reply yes or no."
-Status: Planned behavior.
+12. Prompt: "tera"
+Response: "Please enter valid student name or id"
+Status: Available now.
 
 ## Duplicate First Name Use Cases
 

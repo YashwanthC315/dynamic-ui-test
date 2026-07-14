@@ -35,8 +35,8 @@ Naming rule: avoid aliases like "student A" and prefer student ID or full name p
 - User types extra spaces "  nisha   rao  " and chat trims whitespace before matching.
 - User types punctuation "rahul, rao" and chat normalizes punctuation and still matches.
 - User types partial ID "23p1" and chat either suggests nearest IDs or asks for full ID.
-- User types nickname "chiru" and chat says no confident match unless nickname mapping exists.
-- User types transliterated variation and chat attempts soft matching if enabled, otherwise asks for exact name or ID.
+- User types nickname "chiru" and chat replies "Please enter valid student name or id".
+- User types transliterated variation and chat replies "Please enter valid student name or id".
 
 ## Duplicate First Name Use Cases
 
@@ -62,7 +62,6 @@ Naming rule: avoid aliases like "student A" and prefer student ID or full name p
 - User types "switch student to 23P112" and chat moves context to that student.
 - User types "back to pending" and chat switches tab without losing form data.
 - User types "what is selected" and chat summarizes selected student, amount, mode, and chosen pending fees.
-- User types "undo last change" and chat rolls back one user action if undo stack is implemented.
 - User types "start over" and chat resets fields but keeps student if reset policy says so.
 - User types "start over completely" and chat resets all fields including selected student.
 
@@ -73,7 +72,6 @@ Naming rule: avoid aliases like "student A" and prefer student ID or full name p
 - User types "save" without selecting student and chat replies "Select a student first".
 - User types "save" without payment mode and chat replies "Select payment mode".
 - User types "save" with amount mismatch and chat replies with exact difference value.
-- User types "adjustment yes" when adjustment should be disabled and chat explains why it is unavailable.
 - User types invalid date format and chat asks for date in expected format.
 - User types future date beyond policy limit and chat asks for a valid receipt date.
 - User attempts to save with no pending rows selected and chat asks user to select at least one pending fee.
@@ -84,7 +82,7 @@ Naming rule: avoid aliases like "student A" and prefer student ID or full name p
 - User asks unrelated question like weather and chat replies that it handles fee or receipt operations only.
 - User asks "book a cab" and chat politely refuses and suggests fee-related commands.
 - User asks "mass attendance" in fee-only mode and chat explains feature is not available in this screen.
-- User asks "create exam timetable" and chat returns a narrow-scope guidance reply.
+- User asks "create exam timetable" and chat returns fee-only scope guidance.
 - User asks for system password and chat refuses sensitive operations.
 - User asks to delete all data and chat asks for admin flow outside current UI.
 - User asks unsupported report type and chat suggests available options.

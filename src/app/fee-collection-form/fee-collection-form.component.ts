@@ -194,29 +194,29 @@ export class FeeCollectionFormComponent {
       return 'Did you mean show paid tab or show pending tab? Reply with one option.';
     }
 
-    if (normalized.includes('start over completely') || normalized.includes('reset all')) {
+    if (this.hasAnyPhrase(normalized, ['start over completely', 'reset all', 'clear everything', 'reset completely'])) {
       this.resetState(false);
       return 'Reset complete. Student selection and form fields are cleared.';
     }
 
-    if (normalized.includes('start over') || normalized.includes('reset')) {
+    if (this.hasAnyPhrase(normalized, ['start over', 'reset', 'clear form'])) {
       this.resetState(true);
       return this.selectedStudent
         ? `Reset fields and selections for ${this.selectedStudent.name}.`
         : 'Reset form fields. Select a student to continue.';
     }
 
-    if (normalized.includes('clear selection') || normalized.includes('unselect all')) {
+    if (this.hasAnyPhrase(normalized, ['clear selection', 'unselect all', 'deselect all'])) {
       this.selectedPendingFeeIds.clear();
       this.syncAdjustmentControl();
       return 'Cleared all selected pending fee rows.';
     }
 
-    if ((normalized.includes('select') || normalized.includes('unselect') || normalized.includes('deselect')) && normalized.includes('fee')) {
+    if (this.isFeeSelectionIntent(normalized)) {
       return this.handleFeeRowSelectionPrompt(normalized);
     }
 
-    if (normalized.includes('select all pending')) {
+    if (this.hasAnyPhrase(normalized, ['select all pending', 'select all fees', 'mark all pending'])) {
       if (!this.selectedStudent) {
         return 'Select a student first, then I can select all pending fees.';
       }
@@ -228,9 +228,12 @@ export class FeeCollectionFormComponent {
       return `Selected all pending fee rows (${this.selectedPendingFeeIds.size}).`;
     }
 
-    if (normalized.includes('show paid') || normalized.includes('fees paid') || normalized.includes('paid tab') || normalized === 'paid') {
+    if (this.isShowPaidIntent(normalized)) {
       if (!this.selectedStudent) {
-        return 'Select a student first, then I can open Fees Paid tab.';
+        const contextStudentReply = this.tryResolveStudentFromPrompt(normalized);
+        if (!this.selectedStudent) {
+          return contextStudentReply ?? 'Select a student first, then I can open Fees Paid tab.';
+        }
       }
 
       this.activeTab = 'paid';
@@ -246,9 +249,12 @@ export class FeeCollectionFormComponent {
       return `Opened Fees Paid tab for ${this.selectedStudent.name}.`;
     }
 
-    if (normalized.includes('show pending') || normalized.includes('pending tab') || normalized.includes('pending fees') || normalized === 'pending') {
+    if (this.isShowPendingIntent(normalized)) {
       if (!this.selectedStudent) {
-        return 'Select a student first, then I can open Pending Fees tab.';
+        const contextStudentReply = this.tryResolveStudentFromPrompt(normalized);
+        if (!this.selectedStudent) {
+          return contextStudentReply ?? 'Select a student first, then I can open Pending Fees tab.';
+        }
       }
 
       this.activeTab = 'pending';
@@ -264,7 +270,7 @@ export class FeeCollectionFormComponent {
       return `Opened Pending Fees tab for ${this.selectedStudent.name}.`;
     }
 
-    if (normalized.includes('today receipt')) {
+    if (this.hasAnyPhrase(normalized, ['today receipt', 'receipt today', 'set date today', 'use today date'])) {
       this.form.controls.receiptDate.setValue(this.today());
       return `Set receipt date to ${this.today()}.`;
     }
@@ -281,7 +287,7 @@ export class FeeCollectionFormComponent {
       return 'I could not identify a payment mode. Use: mode cash, mode cheque, mode online, or paid in cash.';
     }
 
-    if (normalized.includes('amount') || normalized.includes('pay ') || normalized.includes('received')) {
+    if (this.isAmountIntent(normalized)) {
       const amountMatch = normalized.match(/-?\d+(?:\.\d+)?/);
       if (!amountMatch) {
         return 'Please provide a numeric amount, for example: set amount 500.';
@@ -297,7 +303,7 @@ export class FeeCollectionFormComponent {
       return `Amount received set to ${parsedAmount.toFixed(2)}.`;
     }
 
-    if (normalized.includes('how much is pending') || normalized.includes('pending total') || normalized.includes('how much pending')) {
+    if (this.hasAnyPhrase(normalized, ['how much is pending', 'pending total', 'how much pending', 'total pending'])) {
       if (!this.selectedStudent) {
         return 'Select a student first to view pending totals.';
       }
@@ -308,11 +314,11 @@ export class FeeCollectionFormComponent {
       return `Selected pending total: ${this.selectedPendingFeesTotal.toFixed(2)}. Overall pending total: ${totalPending.toFixed(2)}.${noteSuffix}`;
     }
 
-    if (normalized.includes('what is selected') || normalized.includes('status') || normalized.includes('summary')) {
+    if (this.hasAnyPhrase(normalized, ['what is selected', 'status', 'summary', 'current selection', 'selected details'])) {
       return this.selectionSummary();
     }
 
-    if (normalized.includes('save')) {
+    if (this.isSaveIntent(normalized)) {
       return this.trySaveFromChat();
     }
 
@@ -321,7 +327,11 @@ export class FeeCollectionFormComponent {
       return studentResult;
     }
 
-    if (normalized.includes('fee') || normalized.includes('collect') || normalized.includes('receipt')) {
+    if (this.shouldPromptForValidStudentIdentity(normalized)) {
+      return 'Please enter valid student name or id';
+    }
+
+    if (this.hasAnyPhrase(normalized, ['fee', 'collect', 'collection', 'receipt'])) {
       return this.selectedStudent
         ? `Fee collection is active for ${this.selectedStudent.name}.`
         : 'Fee collection form is active. Pick a student by ID or full name to continue.';
@@ -446,6 +456,54 @@ export class FeeCollectionFormComponent {
       normalizedPrompt.includes('what can you do') ||
       normalizedPrompt.startsWith('how do i')
     );
+  }
+
+  private hasAnyPhrase(normalizedPrompt: string, phrases: string[]): boolean {
+    return phrases.some((phrase) => normalizedPrompt.includes(phrase));
+  }
+
+  private hasAnyWord(normalizedPrompt: string, words: string[]): boolean {
+    return words.some((word) => new RegExp(`\\b${word}\\b`, 'i').test(normalizedPrompt));
+  }
+
+  private isShowPendingIntent(normalizedPrompt: string): boolean {
+    if (normalizedPrompt === 'pending') {
+      return true;
+    }
+
+    const pendingSignals = ['pending', 'due', 'unpaid'];
+    const showSignals = ['show', 'open', 'view', 'list', 'display'];
+    return this.hasAnyWord(normalizedPrompt, pendingSignals) && this.hasAnyWord(normalizedPrompt, showSignals);
+  }
+
+  private isShowPaidIntent(normalizedPrompt: string): boolean {
+    if (normalizedPrompt === 'paid') {
+      return true;
+    }
+
+    if (normalizedPrompt.includes('latest receipt')) {
+      return true;
+    }
+
+    const paidSignals = ['paid', 'receipt', 'receipts', 'history'];
+    const showSignals = ['show', 'open', 'view', 'list', 'display'];
+    return this.hasAnyWord(normalizedPrompt, paidSignals) && this.hasAnyWord(normalizedPrompt, showSignals);
+  }
+
+  private isAmountIntent(normalizedPrompt: string): boolean {
+    const amountSignals = ['amount', 'receive', 'received', 'collect', 'payment'];
+    const hasNumber = /-?\d+(?:\.\d+)?/.test(normalizedPrompt);
+    return hasNumber && this.hasAnyWord(normalizedPrompt, amountSignals);
+  }
+
+  private isSaveIntent(normalizedPrompt: string): boolean {
+    return this.hasAnyWord(normalizedPrompt, ['save', 'submit', 'confirm', 'post']);
+  }
+
+  private isFeeSelectionIntent(normalizedPrompt: string): boolean {
+    const selectSignals = ['select', 'unselect', 'deselect', 'check', 'uncheck', 'mark'];
+    const feeSignals = ['fee', 'fees', 'lab', 'tuition', 'tution', 'exam', 'sports', 'computer', 'miscellaneous'];
+    return this.hasAnyWord(normalizedPrompt, selectSignals) && this.hasAnyWord(normalizedPrompt, feeSignals);
   }
 
   private isOutOfScopeIntent(normalizedPrompt: string): boolean {
@@ -582,6 +640,21 @@ export class FeeCollectionFormComponent {
     }
 
     const stopWords = new Set([
+      'can',
+      'could',
+      'would',
+      'will',
+      'you',
+      'u',
+      'please',
+      'kindly',
+      'quickly',
+      'just',
+      'me',
+      'my',
+      'the',
+      'a',
+      'an',
       'pick',
       'select',
       'open',
@@ -632,6 +705,75 @@ export class FeeCollectionFormComponent {
       const courseMatch = courseWords.every((word) => normalizedCourse.includes(word));
       return nameMatch && courseMatch;
     });
+  }
+
+  private shouldPromptForValidStudentIdentity(normalizedPrompt: string): boolean {
+    const explicitId = normalizedPrompt.match(/\b\d{2}p\d{3}\b/i);
+    if (explicitId) {
+      return false;
+    }
+
+    const words = normalizedPrompt
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+
+    const alphaWords = words.filter((word) => /^[a-z]+$/.test(word));
+    if (alphaWords.length === 0) {
+      return false;
+    }
+
+    const commandKeywords = new Set([
+      'help',
+      'commands',
+      'show',
+      'paid',
+      'pending',
+      'tab',
+      'set',
+      'amount',
+      'mode',
+      'cash',
+      'cheque',
+      'online',
+      'today',
+      'receipt',
+      'save',
+      'clear',
+      'selection',
+      'select',
+      'unselect',
+      'deselect',
+      'all',
+      'fee',
+      'fees',
+      'how',
+      'much',
+      'what',
+      'status',
+      'summary',
+      'start',
+      'over',
+      'reset',
+      'retry',
+      'network',
+      'timeout',
+      'backend',
+      'lookup',
+      'error',
+      'yes',
+      'no',
+      'weather',
+      'cab',
+      'attendance',
+      'timetable',
+      'password',
+    ]);
+
+    const hasLookupVerb = ['pick', 'select', 'open', 'switch', 'student', 'name'].some((term) => normalizedPrompt.includes(term));
+    const unknownNameLike = alphaWords.length <= 3 && alphaWords.every((word) => !commandKeywords.has(word));
+
+    return hasLookupVerb || unknownNameLike;
   }
 
   private formatStudentOptions(students: Student[]): string {
