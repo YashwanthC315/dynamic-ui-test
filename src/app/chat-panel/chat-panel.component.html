@@ -4,13 +4,7 @@
     <p>{{ subtitle }}</p>
   </header>
 
-  <section class="quick-command-list" *ngIf="quickCommands.length > 0">
-    <button type="button" class="quick-btn" *ngFor="let command of quickCommands" (click)="runQuickCommand(command)">
-      {{ command }}
-    </button>
-  </section>
-
-  <section class="chat-thread">
+  <section class="chat-thread" #chatThread>
     <article class="chat-message" *ngFor="let message of messages" [class.user]="message.role === 'user'">
       <p>{{ message.text }}</p>
       <small>{{ message.role | titlecase }} - {{ message.time }}</small>

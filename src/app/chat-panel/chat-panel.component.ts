@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 export interface ChatMessage {
@@ -20,7 +20,23 @@ export class ChatPanelComponent {
   @Input() subtitle = 'Chat-driven workflow control';
   @Input() placeholder = 'Type a command';
   @Input() quickCommands: string[] = [];
-  @Input() messages: ChatMessage[] = [];
+
+  @ViewChild('chatThread')
+  private chatThreadRef?: ElementRef<HTMLElement>;
+
+  private _messages: ChatMessage[] = [];
+
+  @Input()
+  set messages(value: ChatMessage[]) {
+    this._messages = value;
+    queueMicrotask(() => {
+      this.scrollToBottom();
+    });
+  }
+
+  get messages(): ChatMessage[] {
+    return this._messages;
+  }
 
   @Output() promptSubmitted = new EventEmitter<string>();
 
@@ -38,5 +54,14 @@ export class ChatPanelComponent {
 
   runQuickCommand(command: string): void {
     this.promptSubmitted.emit(command);
+  }
+
+  private scrollToBottom(): void {
+    const chatThread = this.chatThreadRef?.nativeElement;
+    if (!chatThread) {
+      return;
+    }
+
+    chatThread.scrollTop = chatThread.scrollHeight;
   }
 }

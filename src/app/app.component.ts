@@ -15,7 +15,7 @@ export class AppComponent {
 
   readonly title = 'Dynamic Operations Console';
   readonly subtitle = 'Universal chat panel currently connected to fee collection';
-  readonly chatPlaceholder = 'Type a fee-collection command';
+  readonly chatPlaceholder = 'Type a prompt: pick 20P074, set amount 500, mode cash, show paid tab';
 
   chatMessages: ChatMessage[] = [
     {

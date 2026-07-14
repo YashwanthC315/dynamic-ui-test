@@ -22,6 +22,7 @@
   margin: 0 auto;
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
+  align-items: start;
   gap: 16px;
 }
 
