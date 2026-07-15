@@ -44,8 +44,8 @@ Scope: board routing, compact help actions, student disambiguation, fee actions,
 ## Fee Collection Happy Path Use Cases
 
 - User types "open receipt for 20P074" and chat selects that student.
-- User types "show pending fees" and chat opens Pending Fees tab for selected student.
-- User types "show paid" and chat opens Fees Paid tab for selected student.
+- User types "show pending fees" and chat opens Pending Fees tab when a student is selected (or student is provided in prompt).
+- User types "show paid" and chat opens Fees Paid tab when a student is selected (or student is provided in prompt).
 - User types "set amount 500" and chat sets amount received to 500.00.
 - User types "mode cash" and chat sets payment mode to Cash.
 - User types "mode cheque" and chat sets payment mode to Cheque.
@@ -70,8 +70,8 @@ Scope: board routing, compact help actions, student disambiguation, fee actions,
 - Out-of-scope fee commands (weather/cab/etc.) return fee-scope guidance when routed to fee flow.
 - User types "backend lookup failed" and chat returns retry guidance.
 - User types "student list failed to load" and chat suggests manual ID fallback.
-- User types "network timeout" and chat confirms safe retry behavior.
-- User types "retry save after timeout" and chat runs idempotency guard message.
+- User types "network timeout" in fee flow and chat confirms safe retry behavior.
+- User types "retry save after timeout" in fee flow and chat runs idempotency guard message.
 
 ## Current Constraints
 

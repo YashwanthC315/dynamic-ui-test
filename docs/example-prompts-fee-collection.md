@@ -40,7 +40,7 @@ Status: Available now.
 ## Fee Collection Happy Path
 
 1. Prompt: "open fee collection"
-Response: Fee workspace becomes active and fee commands are routed to the fee form.
+Response: "Fee collection workspace is active. Pick a student by ID or full name to continue."
 Status: Available now.
 
 2. Prompt: "open receipt for 20P074"
@@ -51,12 +51,12 @@ Status: Available now.
 Response: "Selected Neha Rao (23P112)."
 Status: Available now.
 
-4. Prompt: "show latest receipt"
-Response: "Latest receipt for <student>: <receipt no>, amount <amount>, paid on <date>."
+4. Prompt: "show latest receipt for 20P074"
+Response: "Latest receipt for Chirag Jagadish: <receipt no>, amount <amount>, paid on <date>."
 Status: Available now when paid records exist.
 
-5. Prompt: "show pending fees"
-Response: "Opened Pending Fees tab for <student>."
+5. Prompt: "show pending fees for 20P074"
+Response: "Opened Pending Fees tab for Chirag Jagadish."
 Status: Available now.
 
 6. Prompt: "set amount 500"
@@ -89,7 +89,7 @@ Status: Available now.
 Response: Chat confirms selected section and checks amount correctness against selected total.
 Status: Available now.
 
-5. Prompt: amount mismatch case (requested 500, selected total 250)
+5. Prompt: after selecting only "Lab Fee August 2020 (250.00)" while requested amount is 500
 Response: Chat explains mismatch and shows corrective options (for example, Set amount 250.00, Select all pending, Clear selection).
 Status: Available now.
 
@@ -97,8 +97,8 @@ Status: Available now.
 Response: "Amount received set to 250.00." Chat confirms amount is correct and asks for payment mode + save.
 Status: Available now.
 
-7. Prompt: click "Mode cash" then click "Save"
-Response: "Transaction saved for <student> and moved to Fees Paid tab."
+7. Prompt: click "Mode cash" then "save"
+Response: "Payment mode set to Cash." followed by successful save confirmation: "Transaction saved for <student> and moved to Fees Paid tab."
 Status: Available now.
 
 ## Duplicate Name Disambiguation
@@ -153,7 +153,7 @@ Status: Available now.
 
 6. Prompt: "network timeout"
 Response: "Network timeout noted. No duplicate save was performed. You can safely retry save."
-Status: Available now.
+Status: Available now in fee workflow context.
 
 ## Out-of-Scope in Fee Form
 

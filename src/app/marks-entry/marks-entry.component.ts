@@ -118,12 +118,26 @@ export class MarksEntryComponent implements OnInit, OnDestroy {
   }
 
   private resolveSectionFromPrompt(normalizedPrompt: string): string | null {
-    if (normalizedPrompt.includes('all sections') || normalizedPrompt === 'all') {
+    const normalizedWithNumericAliases = this.normalizeSectionAlias(normalizedPrompt);
+
+    if (normalizedWithNumericAliases.includes('all sections') || normalizedWithNumericAliases === 'all') {
       return 'All Sections';
     }
 
-    const section = this.sections.find((item) => item !== 'All Sections' && normalizedPrompt.includes(item.toLowerCase()));
+    const section = this.sections.find(
+      (item) => item !== 'All Sections' && normalizedWithNumericAliases.includes(this.normalizeSectionAlias(item.toLowerCase()))
+    );
     return section ?? null;
+  }
+
+  private normalizeSectionAlias(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/\b1\b/g, 'i')
+      .replace(/\b2\b/g, 'ii')
+      .replace(/\b3\b/g, 'iii')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private normalizePrompt(prompt: string): string {

@@ -20,10 +20,6 @@ Status: Available now.
 Response: Same as help with marks-focused quick actions.
 Status: Available now.
 
-3. Prompt: ""
-Response: "Please enter a marks command. Try help."
-Status: Available now.
-
 ## Section Discovery and Selection
 
 1. Prompt: "show section list"

@@ -171,6 +171,10 @@ export class FeeCollectionFormComponent {
       return 'Please enter a command. Try "help" to see supported fee collection commands.';
     }
 
+    if (this.hasAnyPhrase(normalized, ['open fee collection', 'fee collection', 'go to fee collection'])) {
+      return 'Fee collection workspace is active. Pick a student by ID or full name to continue.';
+    }
+
     if (this.pendingSuggestedPrompt) {
       if (this.isAffirmative(normalized)) {
         const suggested = this.pendingSuggestedPrompt;
@@ -299,7 +303,7 @@ export class FeeCollectionFormComponent {
     if (modeFromPrompt && this.hasPaymentModeIntent(normalized)) {
       this.form.controls.paymentMode.setValue(modeFromPrompt);
       if (!normalized.includes('save')) {
-        return `Payment mode set to ${this.toModeLabel(modeFromPrompt)}.`;
+        return this.appendGuidedFollowUp(`Payment mode set to ${this.toModeLabel(modeFromPrompt)}.`);
       }
     }
 
@@ -733,6 +737,18 @@ export class FeeCollectionFormComponent {
       'with',
       'switch',
       'change',
+      'collect',
+      'collection',
+      'from',
+      'for',
+      'lab',
+      'tuition',
+      'tution',
+      'exam',
+      'sports',
+      'computer',
+      'admission',
+      'balance',
     ]);
 
     const courseKeywords = ['bca', 'bcom', 'bba', 'puc', 'science', 'commerce', 'pcmb'];

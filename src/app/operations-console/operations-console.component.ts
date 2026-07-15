@@ -89,6 +89,11 @@ export class OperationsConsoleComponent implements AfterViewInit, OnDestroy {
       return 'Opened the operations board home. Ask for any report, or say "open fee collection" to work on student receipts.';
     }
 
+    if (this.isOpenFeeCollectionIntent(normalizedPrompt)) {
+      this.activeWorkspace = 'fee';
+      return 'Fee collection workspace is active. Pick a student by ID or full name to continue.';
+    }
+
     if (this.activeWorkspace === 'fee' && !this.isBoardAnalyticsIntent(normalizedPrompt)) {
       return this.routePromptToFeeWorkflow(prompt);
     }
@@ -207,6 +212,15 @@ export class OperationsConsoleComponent implements AfterViewInit, OnDestroy {
     return normalizedPrompt === 'home' || normalizedPrompt === 'show home' || normalizedPrompt === 'show board' || normalizedPrompt === 'open board';
   }
 
+  private isOpenFeeCollectionIntent(normalizedPrompt: string): boolean {
+    return (
+      normalizedPrompt === 'open fee collection' ||
+      normalizedPrompt === 'fee collection' ||
+      normalizedPrompt === 'open fees' ||
+      normalizedPrompt === 'go to fee collection'
+    );
+  }
+
   private isBoardAnalyticsIntent(normalizedPrompt: string): boolean {
     if (
       normalizedPrompt.includes('pending fees report') ||
@@ -238,6 +252,8 @@ export class OperationsConsoleComponent implements AfterViewInit, OnDestroy {
     return (
       normalizedPrompt.includes('fee collection') ||
       normalizedPrompt.includes('open receipt') ||
+      normalizedPrompt.includes('latest receipt') ||
+      normalizedPrompt.includes('show receipt') ||
       normalizedPrompt.includes('collect') ||
       normalizedPrompt.includes('payment') ||
       normalizedPrompt.includes('show paid') ||
@@ -245,6 +261,8 @@ export class OperationsConsoleComponent implements AfterViewInit, OnDestroy {
       normalizedPrompt.includes('set amount') ||
       normalizedPrompt.includes('mode ') ||
       normalizedPrompt.includes('paid in ') ||
+      normalizedPrompt.includes('network timeout') ||
+      normalizedPrompt.includes('retry save') ||
       normalizedPrompt.includes('save') ||
       normalizedPrompt.includes('what is selected')
     );
