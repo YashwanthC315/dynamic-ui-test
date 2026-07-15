@@ -564,5 +564,4 @@ For a first version, keep it focused:
 - design-token support
 - policy-aware confirmations
 
-That is enough to validate the approach without overbuilding.
 
