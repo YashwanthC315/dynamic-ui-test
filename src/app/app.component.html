@@ -9,6 +9,33 @@
       (promptSubmitted)="handlePrompt($event)"
     ></app-chat-panel>
 
-    <app-fee-collection-form></app-fee-collection-form>
+    <section class="board-shell">
+      <header class="board-header">
+        <div>
+          <h1>{{ boardTitle }}</h1>
+          <p>{{ boardSubtitle }}</p>
+        </div>
+        <span class="workspace-badge" [class.fee]="activeWorkspace === 'fee'">
+          {{ activeWorkspace === 'fee' ? 'Fee Collection Active' : 'Board Home Active' }}
+        </span>
+      </header>
+
+      <section class="kpi-grid" *ngIf="activeWorkspace === 'home'">
+        <article class="kpi-card" *ngFor="let kpi of boardKpis">
+          <h3>{{ kpi.title }}</h3>
+          <strong>{{ kpi.value }}</strong>
+          <p>{{ kpi.note }}</p>
+        </article>
+      </section>
+
+      <section class="board-home" *ngIf="activeWorkspace === 'home'">
+        <article class="insight-card">
+          <h2>Live Insight</h2>
+          <p>{{ boardInsight }}</p>
+        </article>
+      </section>
+
+      <app-fee-collection-form [class.hidden-panel]="activeWorkspace !== 'fee'"></app-fee-collection-form>
+    </section>
   </section>
 </main>
