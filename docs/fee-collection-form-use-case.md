@@ -28,6 +28,19 @@ Scope: board routing, compact help actions, student disambiguation, fee actions,
 - User types unique full name and chat selects that student directly.
 - User types valid full student ID and chat selects that student directly.
 
+## Guided Collection Workflow Use Cases
+
+- User types a natural prompt like "collect 500 from rahul for lab fee" and chat starts guided collection mode.
+- If student name is ambiguous, chat first asks user to confirm student (clickable student options, or number/name/ID text reply).
+- After student confirmation, chat opens the fee form in Pending tab and continues the guided sequence.
+- Chat asks user to confirm which fee sections to collect and shows clickable section options plus Select all pending.
+- User can pick fee sections through button clicks or by text commands such as "select lab fee".
+- If requested amount is present in prompt, chat pre-fills amount in form.
+- Chat validates amount against selected fee-section total before save.
+- When amount mismatches selected total, chat provides correction options (set amount to total, select all pending, clear selection).
+- Once amount matches, chat prompts user to set payment mode and then save.
+- On successful save, chat confirms transaction and moves to Fees Paid tab.
+
 ## Fee Collection Happy Path Use Cases
 
 - User types "open receipt for 20P074" and chat selects that student.

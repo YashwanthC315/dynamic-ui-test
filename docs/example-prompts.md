@@ -71,6 +71,36 @@ Status: Available now.
 Response: "Transaction saved for <student> and moved to Fees Paid tab."
 Status: Available now when validations pass.
 
+## Guided Collection Flow (Ordered Confirmations)
+
+1. Prompt: "collect 500 from rahul for lab fee"
+Response: If multiple Rahul records exist, chat first asks to confirm student with clickable student options.
+Status: Available now.
+
+2. Prompt: click student option "3) Rahul Rao (23P102)" (or type option number/name/ID)
+Response: "Selected Rahul Rao (23P102)." Then chat continues guided flow and asks which fee section(s) to collect.
+Status: Available now.
+
+3. Prompt: "collect 500 from chirag for lab fee"
+Response: "Opened fee form for Chirag Jagadish (20P074)." Then chat shows clickable fee-section options and Select all pending.
+Status: Available now.
+
+4. Prompt: click "Lab Fee August 2020 (250.00)"
+Response: Chat confirms selected section and checks amount correctness against selected total.
+Status: Available now.
+
+5. Prompt: amount mismatch case (requested 500, selected total 250)
+Response: Chat explains mismatch and shows corrective options (for example, Set amount 250.00, Select all pending, Clear selection).
+Status: Available now.
+
+6. Prompt: click "Set amount 250.00"
+Response: "Amount received set to 250.00." Chat confirms amount is correct and asks for payment mode + save.
+Status: Available now.
+
+7. Prompt: click "Mode cash" then click "Save"
+Response: "Transaction saved for <student> and moved to Fees Paid tab."
+Status: Available now.
+
 ## Duplicate Name Disambiguation
 
 1. Prompt: "pick rahul"

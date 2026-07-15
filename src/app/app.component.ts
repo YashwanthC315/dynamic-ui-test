@@ -222,6 +222,8 @@ export class AppComponent {
     return (
       normalizedPrompt.includes('fee collection') ||
       normalizedPrompt.includes('open receipt') ||
+      normalizedPrompt.includes('collect') ||
+      normalizedPrompt.includes('payment') ||
       normalizedPrompt.includes('show paid') ||
       normalizedPrompt.includes('show pending') ||
       normalizedPrompt.includes('set amount') ||

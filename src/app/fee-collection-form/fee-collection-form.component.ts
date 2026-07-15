@@ -30,6 +30,10 @@ interface PaidFee {
   mode: PaymentMode;
 }
 
+interface GuidedCollectionState {
+  requestedAmount: number | null;
+}
+
 export interface ChatOption {
   label: string;
   prompt: string;
@@ -121,6 +125,7 @@ export class FeeCollectionFormComponent {
   private pendingDisambiguation: Student[] = [];
   private pendingSuggestedPrompt: string | null = null;
   private lastSavedFingerprint: string | null = null;
+  private guidedCollectionState: GuidedCollectionState | null = null;
 
   constructor(private readonly fb: FormBuilder) {
     this.form.controls.amountReceived.valueChanges.subscribe(() => {
@@ -187,6 +192,10 @@ export class FeeCollectionFormComponent {
       }
     }
 
+    if (this.isGuidedCollectionIntent(normalized)) {
+      return this.startGuidedCollection(normalized);
+    }
+
     if (this.isHelpIntent(normalized)) {
       return this.helpText();
     }
@@ -219,11 +228,12 @@ export class FeeCollectionFormComponent {
     if (this.hasAnyPhrase(normalized, ['clear selection', 'unselect all', 'deselect all'])) {
       this.selectedPendingFeeIds.clear();
       this.syncAdjustmentControl();
-      return 'Cleared all selected pending fee rows.';
+      return this.appendGuidedFollowUp('Cleared all selected pending fee rows.');
     }
 
     if (this.isFeeSelectionIntent(normalized)) {
-      return this.handleFeeRowSelectionPrompt(normalized);
+      const selectionReply = this.handleFeeRowSelectionPrompt(normalized);
+      return this.appendGuidedFollowUp(selectionReply);
     }
 
     if (this.hasAnyPhrase(normalized, ['select all pending', 'select all fees', 'mark all pending'])) {
@@ -235,7 +245,7 @@ export class FeeCollectionFormComponent {
         this.selectedPendingFeeIds.add(fee.id);
       }
       this.syncAdjustmentControl();
-      return `Selected all pending fee rows (${this.selectedPendingFeeIds.size}).`;
+      return this.appendGuidedFollowUp(`Selected all pending fee rows (${this.selectedPendingFeeIds.size}).`);
     }
 
     if (this.isShowPaidIntent(normalized)) {
@@ -310,7 +320,7 @@ export class FeeCollectionFormComponent {
 
       this.form.controls.amountReceived.setValue(parsedAmount);
       this.syncAdjustmentControl();
-      return `Amount received set to ${parsedAmount.toFixed(2)}.`;
+      return this.appendGuidedFollowUp(`Amount received set to ${parsedAmount.toFixed(2)}.`);
     }
 
     if (this.hasAnyPhrase(normalized, ['how much is pending', 'pending total', 'how much pending', 'total pending'])) {
@@ -569,12 +579,14 @@ export class FeeCollectionFormComponent {
 
     this.saveTransaction();
     this.lastSavedFingerprint = currentFingerprint;
+    this.guidedCollectionState = null;
     return `Transaction saved for ${this.selectedStudent.name} and moved to Fees Paid tab.`;
   }
 
   private resetState(keepStudent: boolean): void {
     this.selectedPendingFeeIds.clear();
     this.pendingDisambiguation = [];
+    this.guidedCollectionState = null;
     this.form.patchValue({
       amountReceived: 0,
       paymentMode: '',
@@ -602,7 +614,7 @@ export class FeeCollectionFormComponent {
       const student = this.pendingDisambiguation[optionNumber - 1];
       this.pendingDisambiguation = [];
       this.selectStudent(student);
-      return `Selected ${student.name} (${student.id}).`;
+      return this.appendGuidedFollowUp(`Selected ${student.name} (${student.id}).`);
     }
 
     const explicitId = normalizedPrompt.match(/\b\d{2}p\d{3}\b/i)?.[0]?.toUpperCase();
@@ -611,7 +623,7 @@ export class FeeCollectionFormComponent {
       if (matchedStudent) {
         this.pendingDisambiguation = [];
         this.selectStudent(matchedStudent);
-        return `Selected ${matchedStudent.name} (${matchedStudent.id}).`;
+        return this.appendGuidedFollowUp(`Selected ${matchedStudent.name} (${matchedStudent.id}).`);
       }
     }
 
@@ -629,7 +641,7 @@ export class FeeCollectionFormComponent {
         const matchedStudent = nameMatches[0];
         this.pendingDisambiguation = [];
         this.selectStudent(matchedStudent);
-        return `Selected ${matchedStudent.name} (${matchedStudent.id}).`;
+        return this.appendGuidedFollowUp(`Selected ${matchedStudent.name} (${matchedStudent.id}).`);
       }
     }
 
@@ -1098,6 +1110,150 @@ export class FeeCollectionFormComponent {
       .replace(/\bmisc\b/g, 'miscellaneous')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  private isGuidedCollectionIntent(normalizedPrompt: string): boolean {
+    const hasCollectSignal = this.hasAnyWord(normalizedPrompt, ['collect', 'receipt', 'receipts', 'payment', 'pay']);
+    const hasAmount = /\d+(?:\.\d+)?/.test(normalizedPrompt);
+    const hasFeeMention = this.hasAnyWord(normalizedPrompt, ['fee', 'fees', 'tuition', 'lab', 'exam', 'sports', 'computer']);
+    const isDirectCommand = this.hasAnyPhrase(normalizedPrompt, [
+      'set amount',
+      'mode ',
+      'show paid',
+      'show pending',
+      'what is selected',
+      'select all pending',
+      'clear selection',
+      'save',
+    ]);
+
+    return !isDirectCommand && hasCollectSignal && (hasAmount || hasFeeMention);
+  }
+
+  private startGuidedCollection(normalizedPrompt: string): string | ChatPromptResponse {
+    this.guidedCollectionState = { requestedAmount: this.extractAmount(normalizedPrompt) };
+
+    if (!this.selectedStudent) {
+      const studentReply = this.tryResolveStudentFromPrompt(normalizedPrompt);
+      if (!this.selectedStudent) {
+        return studentReply ?? 'Please tell me which student to collect for by name or student ID.';
+      }
+    }
+
+    this.activeTab = 'pending';
+    const matchedFees = this.findFeeCandidatesFromFreeText(normalizedPrompt);
+    if (matchedFees.length > 0) {
+      this.selectedPendingFeeIds.clear();
+      for (const fee of matchedFees) {
+        this.selectedPendingFeeIds.add(fee.id);
+      }
+      this.syncAdjustmentControl();
+    }
+
+    if (this.guidedCollectionState.requestedAmount !== null) {
+      this.form.controls.amountReceived.setValue(this.guidedCollectionState.requestedAmount);
+      this.syncAdjustmentControl();
+    }
+
+    const intro = this.selectedStudent
+      ? `Opened fee form for ${this.selectedStudent.name} (${this.selectedStudent.id}).`
+      : 'Opened fee form.';
+    return this.appendGuidedFollowUp(intro);
+  }
+
+  private appendGuidedFollowUp(baseText: string): string | ChatPromptResponse {
+    if (!this.guidedCollectionState || !this.selectedStudent) {
+      return baseText;
+    }
+
+    if (this.pendingFees.length === 0) {
+      this.guidedCollectionState = null;
+      return `${baseText} No pending fees for this student.`;
+    }
+
+    if (this.selectedPendingFeeIds.size === 0) {
+      return this.response(
+        `${baseText} Step 2: choose which fee sections to collect for ${this.selectedStudent.name}.`,
+        this.buildFeeSelectionOptions()
+      );
+    }
+
+    const selectedFeeLabels = this.pendingFees
+      .filter((fee) => this.selectedPendingFeeIds.has(fee.id))
+      .map((fee) => fee.description)
+      .join(', ');
+
+    const selectedTotal = this.selectedPendingFeesTotal;
+    const requestedAmount = this.guidedCollectionState.requestedAmount;
+    if (requestedAmount === null) {
+      return this.response(
+        `${baseText} Selected sections: ${selectedFeeLabels}. Step 3: confirm amount. Selected total is ${selectedTotal.toFixed(2)}.`,
+        [{ label: `Set amount ${selectedTotal.toFixed(2)}`, prompt: `set amount ${selectedTotal.toFixed(2)}` }]
+      );
+    }
+
+    if (this.pendingDifference !== 0) {
+      return this.response(
+        `${baseText} Selected sections: ${selectedFeeLabels}. Requested amount is ${this.amountReceived.toFixed(2)} but selected total is ${selectedTotal.toFixed(2)}. Confirm sections or update amount.`,
+        [
+          { label: `Set amount ${selectedTotal.toFixed(2)}`, prompt: `set amount ${selectedTotal.toFixed(2)}` },
+          { label: 'Select all pending', prompt: 'select all pending' },
+          { label: 'Clear selection', prompt: 'clear selection' },
+        ]
+      );
+    }
+
+    return this.response(
+      `${baseText} Selected sections: ${selectedFeeLabels}. Amount ${this.amountReceived.toFixed(2)} is correct. Set payment mode and save to complete.`,
+      [
+        { label: 'Mode cash', prompt: 'mode cash' },
+        { label: 'Mode cheque', prompt: 'mode cheque' },
+        { label: 'Mode online', prompt: 'mode online' },
+        { label: 'Save', prompt: 'save' },
+      ]
+    );
+  }
+
+  private buildFeeSelectionOptions(): ChatOption[] {
+    const perFeeOptions = this.pendingFees.map((fee) => ({
+      label: `${fee.description} (${fee.amount.toFixed(2)})`,
+      prompt: `select ${fee.description}`,
+    }));
+
+    return [...perFeeOptions, { label: 'Select all pending', prompt: 'select all pending' }];
+  }
+
+  private findFeeCandidatesFromFreeText(normalizedPrompt: string): PendingFee[] {
+    if (normalizedPrompt.includes('all pending') || normalizedPrompt.includes('all fees')) {
+      return [...this.pendingFees];
+    }
+
+    const promptWords = new Set(
+      normalizedPrompt
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((word) => word.length > 2)
+    );
+
+    return this.pendingFees.filter((fee) => {
+      const feeWords = this.normalizeFeeText(fee.description)
+        .split(' ')
+        .filter((word) => word.length > 2);
+      return feeWords.some((word) => promptWords.has(word));
+    });
+  }
+
+  private extractAmount(normalizedPrompt: string): number | null {
+    const amountMatch = normalizedPrompt.match(/\d+(?:\.\d+)?/);
+    if (!amountMatch) {
+      return null;
+    }
+
+    const parsedAmount = Number(amountMatch[0]);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return null;
+    }
+    return parsedAmount;
   }
 
   private syncAdjustmentControl(): void {
