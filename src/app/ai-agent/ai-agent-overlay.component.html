@@ -1,0 +1,23 @@
+<section
+  class="agent-overlay"
+  *ngIf="aiAgentService.isOpen"
+  [style.left.px]="posX"
+  [style.top.px]="posY"
+>
+  <header class="agent-overlay-header" (mousedown)="startDrag($event)">
+    <div>
+      <strong>AI Agent</strong>
+      <small>{{ aiAgentService.activeScreen | titlecase }} Context</small>
+    </div>
+    <button type="button" (click)="closeOverlay($event)">Close</button>
+  </header>
+
+  <app-chat-panel
+    mode="overlay"
+    [title]="aiAgentService.getTitle()"
+    [subtitle]="aiAgentService.getSubtitle()"
+    [placeholder]="aiAgentService.getPlaceholder()"
+    [messages]="aiAgentService.getMessages()"
+    (promptSubmitted)="handlePrompt($event)"
+  ></app-chat-panel>
+</section>

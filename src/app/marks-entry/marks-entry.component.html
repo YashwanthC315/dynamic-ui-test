@@ -1,0 +1,54 @@
+<main class="marks-page">
+  <section class="marks-shell">
+    <header class="marks-header">
+      <div>
+        <p class="eyebrow">Marks Agent</p>
+        <h1>{{ title }}</h1>
+        <p class="subtitle">{{ subtitle }}</p>
+      </div>
+      <div class="route-badge">Endpoint: /marks</div>
+    </header>
+
+    <section class="assistant-card">
+      <span class="agent-pill">Student Agent</span>
+      <p>
+        I'll help you open FA1 marks entry. Please confirm class/section and I will guide the process.
+      </p>
+      <div class="controls">
+        <label for="sectionSelect">Class / Section</label>
+        <select id="sectionSelect" [(ngModel)]="selectedSection">
+          <option *ngFor="let section of sections" [ngValue]="section">{{ section }}</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="table-card">
+      <div class="table-header">
+        <h2>FA1 / 40</h2>
+        <small>{{ visibleRows.length }} students in view across {{ sectionCount }} sections</small>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Section</th>
+            <th>FA1 / 40</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of visibleRows">
+            <td>
+              <strong>{{ row.student }}</strong>
+              <span>{{ row.id }}</span>
+            </td>
+            <td>{{ row.section }}</td>
+            <td>{{ row.marks }}</td>
+            <td><span class="grade" [class.a]="row.grade === 'A'" [class.b]="row.grade === 'B'" [class.c]="row.grade === 'C'">{{ row.grade }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </section>
+</main>

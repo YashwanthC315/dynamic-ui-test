@@ -26,6 +26,7 @@ export class ChatPanelComponent {
   @Input() subtitle = 'Chat-driven workflow control';
   @Input() placeholder = 'Type a command';
   @Input() quickCommands: string[] = [];
+  @Input() mode: 'page' | 'overlay' = 'page';
 
   @ViewChild('chatThread')
   private chatThreadRef?: ElementRef<HTMLElement>;

@@ -1,0 +1,63 @@
+.agent-overlay {
+  position: fixed;
+  z-index: 60;
+  width: min(380px, calc(100vw - 20px));
+  height: min(72vh, 660px);
+  max-height: calc(100vh - 84px);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  border-radius: 12px;
+  box-shadow: 0 18px 36px rgba(8, 18, 36, 0.35);
+  overflow: hidden;
+}
+
+.agent-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(180deg, #214774 0%, #16345a 100%);
+  color: #f4f8ff;
+  padding: 10px 12px;
+  cursor: move;
+  user-select: none;
+}
+
+.agent-overlay-header strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.agent-overlay-header small {
+  display: block;
+  font-size: 0.74rem;
+  color: #b8d0f8;
+}
+
+.agent-overlay-header button {
+  border: 1px solid rgba(216, 232, 255, 0.65);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 5px 9px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.agent-overlay-header button:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.agent-overlay app-chat-panel {
+  display: block;
+  min-height: 0;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .agent-overlay {
+    width: calc(100vw - 12px);
+    height: min(76vh, 620px);
+  }
+}

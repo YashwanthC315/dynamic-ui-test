@@ -1,6 +1,6 @@
-# Example Prompts and Chat Responses
+# Example Prompts Fee Collection
 
-Purpose: concrete prompt-response examples for the current board-plus-fee chat experience.
+Purpose: concrete prompt-response examples for the current board and fee collection chat experience.
 
 Legend:
 - Available now: implemented and wired in current UI.
