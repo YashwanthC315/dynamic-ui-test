@@ -7,6 +7,11 @@
   <section class="chat-thread" #chatThread>
     <article class="chat-message" *ngFor="let message of messages" [class.user]="message.role === 'user'">
       <p>{{ message.text }}</p>
+      <div class="message-options" *ngIf="message.role === 'assistant' && message.options?.length">
+        <button type="button" class="message-option-btn" *ngFor="let option of message.options" (click)="runMessageOption(option)">
+          {{ option.label }}
+        </button>
+      </div>
       <small>{{ message.role | titlecase }} - {{ message.time }}</small>
     </article>
   </section>

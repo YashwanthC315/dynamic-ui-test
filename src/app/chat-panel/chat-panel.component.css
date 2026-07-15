@@ -81,6 +81,28 @@
   line-height: 1.35;
 }
 
+.message-options {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.message-option-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #bdd1f4;
+  background: #ffffff;
+  color: #173a6b;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.message-option-btn:hover {
+  background: #eaf2ff;
+}
+
 .chat-message small {
   margin-top: 5px;
   display: block;

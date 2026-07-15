@@ -30,6 +30,16 @@ interface PaidFee {
   mode: PaymentMode;
 }
 
+export interface ChatOption {
+  label: string;
+  prompt: string;
+}
+
+export interface ChatPromptResponse {
+  text: string;
+  options?: ChatOption[];
+}
+
 @Component({
   selector: 'app-fee-collection-form',
   standalone: true,
@@ -150,7 +160,7 @@ export class FeeCollectionFormComponent {
     }
   }
 
-  handleChatPrompt(prompt: string): string {
+  handleChatPrompt(prompt: string): string | ChatPromptResponse {
     const normalized = this.normalizePrompt(prompt);
     if (!normalized) {
       return 'Please enter a command. Try "help" to see supported fee collection commands.';
@@ -581,7 +591,7 @@ export class FeeCollectionFormComponent {
     this.activeTab = 'pending';
   }
 
-  private resolveDisambiguation(normalizedPrompt: string): string | null {
+  private resolveDisambiguation(normalizedPrompt: string): string | ChatPromptResponse | null {
     if (normalizedPrompt === 'cancel' || normalizedPrompt === 'none') {
       this.pendingDisambiguation = [];
       return 'Cancelled selection. You can enter a different student name or ID.';
@@ -605,10 +615,31 @@ export class FeeCollectionFormComponent {
       }
     }
 
-    return `Please choose one option by number or ID: ${this.formatStudentOptions(this.pendingDisambiguation)}.`;
+    const nameTokens = normalizedPrompt
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+    if (nameTokens.length > 0) {
+      const nameMatches = this.pendingDisambiguation.filter((student) => {
+        const normalizedName = this.normalizePrompt(student.name);
+        return nameTokens.every((token) => normalizedName.includes(token));
+      });
+
+      if (nameMatches.length === 1) {
+        const matchedStudent = nameMatches[0];
+        this.pendingDisambiguation = [];
+        this.selectStudent(matchedStudent);
+        return `Selected ${matchedStudent.name} (${matchedStudent.id}).`;
+      }
+    }
+
+    return this.response(
+      `Please choose one option by number, student name, or ID: ${this.formatStudentOptions(this.pendingDisambiguation)}.`,
+      this.buildDisambiguationOptions(this.pendingDisambiguation)
+    );
   }
 
-  private tryResolveStudentFromPrompt(normalizedPrompt: string): string | null {
+  private tryResolveStudentFromPrompt(normalizedPrompt: string): string | ChatPromptResponse | null {
     const matches = this.findStudentCandidates(normalizedPrompt);
     if (matches.length === 0) {
       return null;
@@ -630,7 +661,10 @@ export class FeeCollectionFormComponent {
     }
 
     this.pendingDisambiguation = matches;
-    return `I found multiple students: ${this.formatStudentOptions(matches)}. Reply with option number or student ID.`;
+    return this.response(
+      `I found multiple students: ${this.formatStudentOptions(matches)}. Reply with option number, student name, or student ID.`,
+      this.buildDisambiguationOptions(matches)
+    );
   }
 
   private findStudentCandidates(normalizedPrompt: string): Student[] {
@@ -778,6 +812,17 @@ export class FeeCollectionFormComponent {
 
   private formatStudentOptions(students: Student[]): string {
     return students.map((student, index) => `${index + 1}) ${student.name} (${student.id})`).join('; ');
+  }
+
+  private buildDisambiguationOptions(students: Student[]): ChatOption[] {
+    return students.map((student, index) => ({
+      label: `${index + 1}) ${student.name} (${student.id})`,
+      prompt: student.id,
+    }));
+  }
+
+  private response(text: string, options?: ChatOption[]): ChatPromptResponse {
+    return options && options.length > 0 ? { text, options } : { text };
   }
 
   private hasPaymentModeIntent(normalizedPrompt: string): boolean {

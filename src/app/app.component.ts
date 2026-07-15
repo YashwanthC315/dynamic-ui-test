@@ -1,6 +1,6 @@
 import { Component, ViewChild } from '@angular/core';
 import { ChatMessage, ChatPanelComponent } from './chat-panel/chat-panel.component';
-import { FeeCollectionFormComponent } from './fee-collection-form/fee-collection-form.component';
+import { ChatPromptResponse, FeeCollectionFormComponent } from './fee-collection-form/fee-collection-form.component';
 
 @Component({
   selector: 'app-root',
@@ -42,11 +42,16 @@ export class AppComponent {
     }
 
     const response = this.feeCollectionForm.handleChatPrompt(prompt);
-    this.pushMessage('assistant', response);
+    if (typeof response === 'string') {
+      this.pushMessage('assistant', response);
+      return;
+    }
+
+    this.pushMessage('assistant', response.text, response.options);
   }
 
-  private pushMessage(role: 'user' | 'assistant', text: string): void {
-    this.chatMessages = [...this.chatMessages, { role, text, time: this.timeNow() }];
+  private pushMessage(role: 'user' | 'assistant', text: string, options?: ChatPromptResponse['options']): void {
+    this.chatMessages = [...this.chatMessages, { role, text, options, time: this.timeNow() }];
   }
 
   private timeNow(): string {

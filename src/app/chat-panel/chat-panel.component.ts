@@ -5,7 +5,13 @@ import { FormsModule } from '@angular/forms';
 export interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
+  options?: ChatOption[];
   time: string;
+}
+
+export interface ChatOption {
+  label: string;
+  prompt: string;
 }
 
 @Component({
@@ -54,6 +60,10 @@ export class ChatPanelComponent {
 
   runQuickCommand(command: string): void {
     this.promptSubmitted.emit(command);
+  }
+
+  runMessageOption(option: ChatOption): void {
+    this.promptSubmitted.emit(option.prompt);
   }
 
   private scrollToBottom(): void {
