@@ -254,6 +254,10 @@ export class OperationsConsoleComponent implements AfterViewInit, OnDestroy {
       normalizedPrompt.includes('open receipt') ||
       normalizedPrompt.includes('latest receipt') ||
       normalizedPrompt.includes('show receipt') ||
+      normalizedPrompt.includes('lab fee') ||
+      normalizedPrompt.includes('tuition fee') ||
+      normalizedPrompt.includes('exam fee') ||
+      normalizedPrompt.includes('admission fee') ||
       normalizedPrompt.includes('collect') ||
       normalizedPrompt.includes('payment') ||
       normalizedPrompt.includes('show paid') ||

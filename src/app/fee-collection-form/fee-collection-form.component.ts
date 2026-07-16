@@ -346,6 +346,11 @@ export class FeeCollectionFormComponent {
       return this.trySaveFromChat();
     }
 
+    const directFeeSelectionReply = this.tryHandleDirectFeeSelection(normalized);
+    if (directFeeSelectionReply) {
+      return directFeeSelectionReply;
+    }
+
     const studentResult = this.tryResolveStudentFromPrompt(normalized);
     if (studentResult) {
       return studentResult;
@@ -753,7 +758,9 @@ export class FeeCollectionFormComponent {
 
     const courseKeywords = ['bca', 'bcom', 'bba', 'puc', 'science', 'commerce', 'pcmb'];
     const words = normalizedPrompt.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
-    const nameWords = words.filter((word) => !stopWords.has(word) && !courseKeywords.includes(word));
+    const nameWords = words.filter(
+      (word) => /^[a-z]+$/.test(word) && !stopWords.has(word) && !courseKeywords.includes(word)
+    );
     const courseWords = words.filter((word) => courseKeywords.includes(word));
 
     if (nameWords.length === 0) {
@@ -1116,6 +1123,32 @@ export class FeeCollectionFormComponent {
     return feeSearchPool
       .filter(({ normalizedDescription }) => keywords.every((word) => normalizedDescription.includes(word)))
       .map(({ fee }) => fee);
+  }
+
+  private tryHandleDirectFeeSelection(normalizedPrompt: string): string | ChatPromptResponse | null {
+    if (!this.selectedStudent || this.pendingFees.length === 0) {
+      return null;
+    }
+
+    const hasSelectionVerb = this.hasAnyWord(normalizedPrompt, ['select', 'unselect', 'deselect', 'check', 'uncheck', 'mark']);
+    if (hasSelectionVerb) {
+      return null;
+    }
+
+    const hasLikelyFeePhrase =
+      normalizedPrompt.includes('fee') || normalizedPrompt.includes('tuition') || normalizedPrompt.includes('lab') || normalizedPrompt.includes('exam');
+    if (!hasLikelyFeePhrase) {
+      return null;
+    }
+
+    const matches = this.findFeeCandidatesFromFreeText(normalizedPrompt);
+    if (matches.length !== 1) {
+      return null;
+    }
+
+    this.selectedPendingFeeIds.add(matches[0].id);
+    this.syncAdjustmentControl();
+    return this.appendGuidedFollowUp(`Selected ${matches[0].description}.`);
   }
 
   private normalizeFeeText(text: string): string {
