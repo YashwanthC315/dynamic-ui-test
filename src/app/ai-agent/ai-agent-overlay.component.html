@@ -3,6 +3,8 @@
   *ngIf="aiAgentService.isOpen"
   [style.left.px]="posX"
   [style.top.px]="posY"
+  [style.width.px]="width"
+  [style.height.px]="height"
 >
   <header class="agent-overlay-header" (mousedown)="startDrag($event)">
     <div>
@@ -20,4 +22,12 @@
     [messages]="aiAgentService.getMessages()"
     (promptSubmitted)="handlePrompt($event)"
   ></app-chat-panel>
+
+  <button
+    type="button"
+    class="resize-handle"
+    aria-label="Resize chat panel"
+    title="Resize"
+    (mousedown)="startResize($event)"
+  ></button>
 </section>
