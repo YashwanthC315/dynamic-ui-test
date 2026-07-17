@@ -15,7 +15,7 @@ export class AiAgentOverlayComponent {
   isResizing = false;
   posX = 16;
   posY = 72;
-  width = 380;
+  width = 320;
   height = 620;
 
   private dragOffsetX = 0;

@@ -8,6 +8,8 @@
   border-radius: 14px;
   padding: 18px;
   box-shadow: 0 10px 30px rgba(17, 46, 86, 0.08);
+  max-width: 980px;
+  margin: 0 auto;
 }
 
 .card-header {
