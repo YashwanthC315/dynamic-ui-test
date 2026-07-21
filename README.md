@@ -4,7 +4,7 @@ This repository contains a chat-driven operations UI built with Angular. The lef
 
 Current goal: focus on one production-like workflow (fee collection) while keeping chat independent for site-wide reuse.
 
-Angular app location: `apps/dynamic-ui-test`
+Angular app location: `campustrack-ui`
 
 ## Current Scope
 
@@ -60,7 +60,7 @@ Steps:
 1. Change to the app folder:
 
 	 ```bash
-	 cd apps/dynamic-ui-test
+	 cd campustrack-ui
 	 ```
 
 2. Install dependencies:
@@ -86,14 +86,14 @@ The app hot-reloads on file changes.
 - Run tests:
 
 	```bash
-	cd apps/dynamic-ui-test
+	cd campustrack-ui
 	npm test
 	```
 
 - Build production bundle:
 
 	```bash
-	cd apps/dynamic-ui-test
+	cd campustrack-ui
 	npm run build
 	```
 
