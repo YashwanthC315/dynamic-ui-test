@@ -225,6 +225,10 @@
                 <option value="cheque">Cheque</option>
               </select>
             </label>
+            <label>
+              Amount Received
+              <input type="number" min="0" step="0.01" [(ngModel)]="feeAmount" placeholder="Enter amount to collect" />
+            </label>
           </div>
 
           <div class="fee-breakup" *ngIf="selectedFeeStudent">

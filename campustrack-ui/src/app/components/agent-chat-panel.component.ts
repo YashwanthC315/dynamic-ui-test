@@ -305,11 +305,39 @@ export class AgentChatPanelComponent implements AfterViewChecked {
   }
 
   private parseAmount(text: string): number | null {
-    const match = text.match(/set amount\s+([0-9]+(?:\.[0-9]+)?)/i);
+    const match = text.match(/(?:set|update|change)?\s*amount(?:\s+(?:to|as))?\s+([0-9]+(?:\.[0-9]+)?)/i);
     if (!match) {
       return null;
     }
     return Number(match[1]);
+  }
+
+  private normalizeFeeText(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\btution\b/g, 'tuition')
+      .replace(/\bmisc\b/g, 'miscellaneous')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private parseFeeSelectionCommand(raw: string): { action: 'select' | 'unselect'; query: string } | null {
+    const normalized = this.normalize(raw);
+    const action = normalized.includes('unselect') || normalized.includes('deselect') ? 'unselect' : 'select';
+    const verbPattern = action === 'unselect' ? /(unselect|deselect|uncheck)/i : /(select|check|mark)/i;
+
+    if (!verbPattern.test(raw)) {
+      return null;
+    }
+
+    let query = raw.replace(verbPattern, ' ');
+    query = query
+      .replace(/\b(the|a|an|checkbox|row|item|pending|fees?|only|just|please)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return { action, query: this.normalizeFeeText(query) };
   }
 
   private tryResolveDisambiguation(text: string): boolean {
@@ -416,7 +444,19 @@ export class AgentChatPanelComponent implements AfterViewChecked {
       text.includes('select student') ||
       /\b\d{2}p\d{3}\b/i.test(text);
 
-    const isFeeSelectionCommand = text.includes('select all pending') || text.includes('clear selection') || text.includes('unselect all');
+    const isFeeSelectionCommand =
+      text.includes('select all pending') ||
+      text.includes('clear selection') ||
+      text.includes('unselect all') ||
+      ((text.includes('select') || text.includes('unselect') || text.includes('deselect') || text.includes('check')) &&
+        (text.includes('tuition') ||
+          text.includes('tution') ||
+          text.includes('lab') ||
+          text.includes('exam') ||
+          text.includes('sports') ||
+          text.includes('admission') ||
+          text.includes('misc') ||
+          text.includes('fee')));
 
     if (isStudentSelectIntent && !isFeeSelectionCommand) {
       const matches = this.findStudentCandidatesFromPrompt(raw);
@@ -540,6 +580,27 @@ export class AgentChatPanelComponent implements AfterViewChecked {
     if (text.includes('clear selection') || text.includes('unselect all')) {
       this.agentEvent.emit({ type: 'clear_selection' });
       this.appendAssistant('Pending fee selection cleared.');
+      return;
+    }
+
+    if (isFeeSelectionCommand && !text.includes('select all pending') && !text.includes('clear selection') && !text.includes('unselect all')) {
+      if (!this.feeContext?.selectedStudentId) {
+        this.appendAssistant('Select a student first, then I can select specific pending fee rows.');
+        return;
+      }
+
+      const command = this.parseFeeSelectionCommand(raw);
+      if (!command || !command.query) {
+        this.appendAssistant('Please specify the fee row, for example: select tuition fee.');
+        return;
+      }
+
+      this.agentEvent.emit({ type: 'select_pending_fee', action: command.action, query: command.query });
+      this.appendAssistant(
+        command.action === 'unselect'
+          ? `Trying to unselect pending fee rows matching "${command.query}".`
+          : `Trying to select pending fee rows matching "${command.query}".`
+      );
       return;
     }
 

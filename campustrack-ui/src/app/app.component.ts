@@ -385,9 +385,11 @@ export class AppComponent {
   togglePendingFee(id: string): void {
     if (this.selectedPendingFeeIds.has(id)) {
       this.selectedPendingFeeIds.delete(id);
+      this.syncAmountToSelection();
       return;
     }
     this.selectedPendingFeeIds.add(id);
+    this.syncAmountToSelection();
   }
 
   isPendingFeeSelected(id: string): boolean {
@@ -396,10 +398,12 @@ export class AppComponent {
 
   selectAllPendingFees(): void {
     this.selectedPendingFeeIds = new Set(this.pendingFees.map((item) => item.id));
+    this.syncAmountToSelection();
   }
 
   clearPendingSelection(): void {
     this.selectedPendingFeeIds.clear();
+    this.syncAmountToSelection();
   }
 
   collectFullDue(): void {
@@ -468,6 +472,36 @@ export class AppComponent {
       this.openPage('fees');
       this.feesTab = 'collection';
       this.statusMessage = `AI selected ${selected.name} for fee workflows.`;
+      return;
+    }
+
+    if (event.type === 'select_pending_fee') {
+      if (!this.selectedFeeStudent) {
+        this.statusMessage = 'Select a student first, then select fee rows.';
+        return;
+      }
+
+      const matches = this.findPendingFeesByQuery(String(event.query ?? ''));
+      if (matches.length === 0) {
+        this.statusMessage = `No matching pending fee found for ${this.selectedFeeStudent.name}.`;
+        return;
+      }
+
+      const action = event.action === 'unselect' ? 'unselect' : 'select';
+      for (const fee of matches) {
+        if (action === 'unselect') {
+          this.selectedPendingFeeIds.delete(fee.id);
+        } else {
+          this.selectedPendingFeeIds.add(fee.id);
+        }
+      }
+
+      this.syncAmountToSelection();
+      const feeNames = matches.map((fee) => fee.description).join(', ');
+      this.statusMessage =
+        action === 'unselect'
+          ? `Unselected ${matches.length} fee row(s): ${feeNames}.`
+          : `Selected ${matches.length} fee row(s): ${feeNames}. Amount set to ${this.selectedPendingFeesTotal.toFixed(2)}.`;
       return;
     }
 
@@ -565,5 +599,67 @@ export class AppComponent {
 
       return acc;
     }, {});
+  }
+
+  private normalizeFeeText(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\btution\b/g, 'tuition')
+      .replace(/\bmisc\b/g, 'miscellaneous')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private findPendingFeesByQuery(query: string): PendingFee[] {
+    const normalizedQuery = this.normalizeFeeText(query);
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    const queryParts = normalizedQuery
+      .split(/,|\band\b/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    const feeSearchPool = this.pendingFees.map((fee) => ({
+      fee,
+      normalizedDescription: this.normalizeFeeText(fee.description),
+    }));
+
+    const direct = feeSearchPool
+      .filter(({ normalizedDescription }) => normalizedDescription.includes(normalizedQuery))
+      .map(({ fee }) => fee);
+    if (direct.length > 0) {
+      return direct;
+    }
+
+    if (queryParts.length > 1) {
+      const collected = new Map<string, PendingFee>();
+      for (const part of queryParts) {
+        const tokens = part.split(' ').filter((word) => word.length > 1);
+        for (const entry of feeSearchPool) {
+          if (tokens.every((token) => entry.normalizedDescription.includes(token))) {
+            collected.set(entry.fee.id, entry.fee);
+          }
+        }
+      }
+      if (collected.size > 0) {
+        return [...collected.values()];
+      }
+    }
+
+    const tokens = normalizedQuery.split(' ').filter((word) => word.length > 1);
+    if (tokens.length === 0) {
+      return [];
+    }
+
+    return feeSearchPool
+      .filter(({ normalizedDescription }) => tokens.every((token) => normalizedDescription.includes(token)))
+      .map(({ fee }) => fee);
+  }
+
+  private syncAmountToSelection(): void {
+    this.feeAmount = this.selectedPendingFeesTotal > 0 ? this.selectedPendingFeesTotal.toFixed(2) : '';
   }
 }
