@@ -1,0 +1,49 @@
+<aside class="agent-panel" [style.width.px]="panelWidth" aria-label="AI Agent Chat" *ngIf="isOpen">
+  <div
+    class="agent-resizer"
+    role="separator"
+    aria-orientation="vertical"
+    aria-label="Resize AI panel"
+    (mousedown)="startResize($event)"
+  ></div>
+
+  <header class="agent-head">
+    <h3>AI Agent</h3>
+    <p class="agent-context-pill">
+      {{ contextLabel }}
+      <span class="agent-context-tab" *ngIf="contextTabDetail"> / {{ contextTabDetail }}</span>
+    </p>
+  </header>
+
+  <section class="agent-thread">
+    <div class="agent-messages" #messagesRef>
+      <article *ngFor="let message of messages" class="agent-msg" [class.agent-msg-user]="message.role === 'user'" [class.agent-msg-system]="message.role === 'system'">
+        <strong>{{ message.role === 'user' ? 'You' : message.role === 'assistant' ? 'Assistant' : 'System' }}</strong>
+        <p>{{ message.text }}</p>
+        <div class="agent-actions" *ngIf="message.contract?.actions?.length">
+          <button
+            *ngFor="let action of message.contract?.actions"
+            type="button"
+            class="agent-action-btn"
+            (click)="executeAction(action)"
+          >
+            {{ action.label }}
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div class="agent-input-wrap">
+      <div class="agent-input-row">
+        <textarea
+          class="agent-input"
+          rows="2"
+          placeholder="Ask in natural language..."
+          [(ngModel)]="inputValue"
+          (keydown)="onComposerKeydown($event)"
+        ></textarea>
+        <button type="button" class="agent-send-btn" (click)="send()">Send</button>
+      </div>
+    </div>
+  </section>
+</aside>

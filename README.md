@@ -4,6 +4,8 @@ This repository contains a chat-driven operations UI built with Angular. The lef
 
 Current goal: focus on one production-like workflow (fee collection) while keeping chat independent for site-wide reuse.
 
+Angular app location: `apps/dynamic-ui-test`
+
 ## Current Scope
 
 The app currently focuses on:
@@ -55,19 +57,25 @@ Prerequisites:
 
 Steps:
 
-1. Install dependencies:
+1. Change to the app folder:
+
+	 ```bash
+	 cd apps/dynamic-ui-test
+	 ```
+
+2. Install dependencies:
 
 	 ```bash
 	 npm install
 	 ```
 
-2. Start dev server:
+3. Start dev server:
 
 	 ```bash
 	 npm start
 	 ```
 
-3. Open in browser:
+4. Open in browser:
 
 	 `http://localhost:4200/`
 
@@ -78,12 +86,14 @@ The app hot-reloads on file changes.
 - Run tests:
 
 	```bash
+	cd apps/dynamic-ui-test
 	npm test
 	```
 
 - Build production bundle:
 
 	```bash
+	cd apps/dynamic-ui-test
 	npm run build
 	```
 
