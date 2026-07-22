@@ -213,6 +213,7 @@
             <label>
               Student
               <select [(ngModel)]="feeStudentId">
+                <option value="">- Select Student -</option>
                 <option *ngFor="let student of feeEnabledStudents" [value]="student.id">{{ student.name }} ({{ student.id }})</option>
               </select>
             </label>

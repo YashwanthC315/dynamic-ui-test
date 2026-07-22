@@ -3,6 +3,32 @@
 Purpose: capture the implemented use cases for the current board-first chat and fee collection flow.
 Scope: board routing, compact help actions, student disambiguation, fee actions, validation, and recovery.
 
+## Implementation Status Audit (2026-07-22)
+
+Summary: many core flows are implemented, but some documented guided/recovery behaviors are only partially implemented or not implemented in the current campustrack-ui chat parser.
+
+Implemented
+
+- Board routing commands work (show board, open fee collection).
+- Student lookup and disambiguation works for first-name or full-name prompts, with clickable options and number/name/ID resolution.
+- Combined prompts work for student + fee selection (for example: select tuition fee for rahul, collect/take/receive from <student> for <fee>, pay <fee> for <student>).
+- Fee row actions work (select all pending, clear selection, direct fee-row select/unselect commands).
+- Save pre-check order now validates student first, then selection/mode/amount checks.
+
+Partially Implemented
+
+- Save confirmation message in chat is optimistic ("Transaction saved successfully.") after pre-checks and event emit, rather than being strictly driven by the actual save result callback.
+- Guided flow exists through command parsing and queued actions, but not as a full multi-step wizard with explicit step-by-step prompts in all paths.
+
+Not Implemented As Documented
+
+- "show pending fees report" and "list fee defaulters" do not currently return action buttons; they return summary text and route tabs.
+- Guided collection does not always present clickable fee-section options plus Select all pending as a dedicated prompt step.
+- Amount mismatch response currently shows exact difference, but does not provide correction action buttons (set amount to total, select all pending, clear selection).
+- Matching-amount state does not currently trigger an explicit "set payment mode and save" suggestion prompt in all paths.
+- Recovery prompts "backend lookup failed" and "student list failed to load" are not currently handled by dedicated branches in this parser.
+- "retry save after timeout" currently shares the generic network-timeout response and does not run an explicit idempotency guard message.
+
 ## Board and Routing Use Cases
 
 - User types "show board" and chat keeps Board Home active with board insight cards.
@@ -31,6 +57,9 @@ Scope: board routing, compact help actions, student disambiguation, fee actions,
 ## Guided Collection Workflow Use Cases
 
 - User types a natural prompt like "collect 500 from rahul for lab fee" and chat starts guided collection mode.
+- User can use phrasing variants such as "take 500 from rahul for lab fee" or "receive 500 from rahul for lab fee" with the same workflow behavior.
+- User can type "select tuition fee for rahul" (or any other student name) and chat resolves student, opens fee form, and selects matching fee rows.
+- User can type "pay tuition fee for rahul" or "collect tuition fee for rahul" and chat resolves student and selects matching fee rows.
 - If student name is ambiguous, chat first asks user to confirm student (clickable student options, or number/name/ID text reply).
 - After student confirmation, chat opens the fee form in Pending tab and continues the guided sequence.
 - Chat asks user to confirm which fee sections to collect and shows clickable section options plus Select all pending.
@@ -52,6 +81,9 @@ Scope: board routing, compact help actions, student disambiguation, fee actions,
 - User types "mode online" and chat sets payment mode to Online.
 - User types "today receipt" and chat sets receipt date to today.
 - User types "select all pending" and chat selects all pending fee rows.
+- User types "select tuition fee for rahul" and chat selects Rahul's tuition fee row after student resolution/disambiguation.
+- User types "collect 500 from chirag for lab fee" and chat selects Chirag's lab fee row and pre-fills amount.
+- User types "pay 9000 tuition fee for rahul" and chat selects tuition fee for Rahul and sets amount to 9000 when provided.
 - User types "clear selection" or "unselect all" and chat clears selected pending rows.
 - User types "what is selected" and chat returns current student/form summary.
 - User types "save" after valid setup and chat confirms transaction saved.
@@ -76,5 +108,6 @@ Scope: board routing, compact help actions, student disambiguation, fee actions,
 ## Current Constraints
 
 - Prompt parsing is keyword/rule based (not model-intent based).
+- Combined natural-language prompts are supported through rules (for example: collect/take/receive from <student> for <fee>, pay <fee> for <student>, select <fee> for <student>).
 - Board help is intentionally compact and does not include "Pick rahul" as a clickable help option.
 - Extended features such as receipt PDF export are not implemented yet.

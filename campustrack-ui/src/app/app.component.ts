@@ -121,7 +121,7 @@ export class AppComponent {
   admissionsQuery = '';
   receiptSearch = '';
 
-  feeStudentId = this.students[0]?.id ?? '';
+  feeStudentId = '';
   feeMode = '';
   feeAmount = '';
   selectedPendingFeeIds = new Set<string>();
@@ -180,7 +180,7 @@ export class AppComponent {
   }
 
   get selectedFeeStudent(): Student | undefined {
-    return this.feeEnabledStudents.find((student) => student.id === this.feeStudentId) ?? this.feeEnabledStudents[0];
+    return this.feeEnabledStudents.find((student) => student.id === this.feeStudentId);
   }
 
   get feeDue(): { tuition: number; misc: number } {

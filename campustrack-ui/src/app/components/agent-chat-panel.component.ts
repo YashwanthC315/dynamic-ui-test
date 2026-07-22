@@ -48,6 +48,7 @@ export class AgentChatPanelComponent implements AfterViewChecked {
   inputValue = '';
   panelWidth = 380;
   pendingDisambiguation: Student[] = [];
+  pendingStudentAction: { action: 'select' | 'unselect'; feeQuery: string; amount: number | null } | null = null;
 
   private lastMessageCount = 0;
   private dragging = false;
@@ -302,6 +303,7 @@ export class AgentChatPanelComponent implements AfterViewChecked {
       { label: 'Show pending fees', event: { type: 'switch_fee_view', view: 'pending' } },
       { label: 'Mode cash', event: { type: 'set_fee_mode', mode: 'cash' } },
     ]);
+    this.applyPendingStudentAction(student);
   }
 
   private parseAmount(text: string): number | null {
@@ -338,6 +340,178 @@ export class AgentChatPanelComponent implements AfterViewChecked {
       .trim();
 
     return { action, query: this.normalizeFeeText(query) };
+  }
+
+  private parseFirstAmount(text: string): number | null {
+    const match = text.match(/\b([0-9]+(?:\.[0-9]+)?)\b/);
+    if (!match) {
+      return null;
+    }
+    const amount = Number(match[1]);
+    return Number.isFinite(amount) ? amount : null;
+  }
+
+  private parseCollectForStudent(raw: string): { studentToken: string; feeQuery: string; amount: number | null } | null {
+    if (!/\b(collect|take|receive)\b/i.test(raw) || !/\bfrom\b/i.test(raw)) {
+      return null;
+    }
+
+    const match = raw.match(/(?:collect|take|receive)\s+(?:([0-9]+(?:\.[0-9]+)?)\s+)?from\s+(.+?)(?:\s+for\s+(.+))?$/i);
+    if (!match) {
+      return null;
+    }
+
+    const explicitAmount = match[1] ? Number(match[1]) : null;
+    const studentToken = (match[2] ?? '').trim();
+    const feeQuery = this.normalizeFeeText(match[3] ?? '');
+    if (!studentToken) {
+      return null;
+    }
+
+    return {
+      studentToken,
+      feeQuery,
+      amount: explicitAmount ?? this.parseFirstAmount(raw),
+    };
+  }
+
+  private parseSelectFeeForStudent(raw: string): { action: 'select' | 'unselect'; feeQuery: string; studentToken: string } | null {
+    const match = raw.match(/(select|unselect|deselect|check|mark)\s+(.+?)\s+for\s+([a-z0-9\s]+)$/i);
+    if (!match) {
+      return null;
+    }
+
+    const action = /unselect|deselect/i.test(match[1]) ? 'unselect' : 'select';
+    const feeQuery = this.normalizeFeeText(match[2] ?? '');
+    const studentToken = (match[3] ?? '').trim();
+
+    if (!feeQuery || !studentToken) {
+      return null;
+    }
+
+    return { action, feeQuery, studentToken };
+  }
+
+  private parsePayFeeForStudent(raw: string): { feeQuery: string; studentToken: string; amount: number | null } | null {
+    const match = raw.match(/(?:pay|collect|take|receive)\s+(.+?)\s+for\s+([a-z0-9\s]+)$/i);
+    if (!match) {
+      return null;
+    }
+
+    const phrase = this.normalizeFeeText(match[1] ?? '');
+    const studentToken = (match[2] ?? '').trim();
+    if (!phrase || !studentToken) {
+      return null;
+    }
+
+    const amount = this.parseFirstAmount(phrase);
+    const feeQuery = this
+      .normalizeFeeText(phrase.replace(/\b[0-9]+(?:\.[0-9]+)?\b/g, ' '))
+      .replace(/\b(amount|rupees|rs|inr|only)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!feeQuery) {
+      return null;
+    }
+
+    return { feeQuery, studentToken, amount };
+  }
+
+  private looksLikeStudentLookup(text: string): boolean {
+    const normalized = this.normalize(text);
+    if (!normalized || /\d/.test(normalized)) {
+      return false;
+    }
+
+    const commandHints = [
+      'show',
+      'open',
+      'mode',
+      'save',
+      'help',
+      'pending',
+      'paid',
+      'receipt',
+      'amount',
+      'select all',
+      'clear',
+      'unselect',
+      'deselect',
+      'dashboard',
+      'defaulters',
+      'summary',
+    ];
+
+    if (commandHints.some((hint) => normalized.includes(hint))) {
+      return false;
+    }
+
+    const words = normalized.split(/\s+/).filter(Boolean);
+    return words.length >= 1 && words.length <= 3 && words.every((word) => /^[a-z]+$/.test(word));
+  }
+
+  private resolveStudentAndMaybeQueueAction(
+    studentToken: string,
+    action: { action: 'select' | 'unselect'; feeQuery: string; amount: number | null }
+  ): boolean {
+    const matches = this.findMatches(studentToken);
+
+    if (matches.length === 0) {
+      this.appendAssistant('No student matched that query. Try full name or student ID (for example 20P074).');
+      return true;
+    }
+
+    if (matches.length > 1) {
+      this.pendingStudentAction = action;
+      this.pendingDisambiguation = matches;
+      const list = matches.map((item, idx) => `${idx + 1}) ${item.name} (${item.id})`).join('; ');
+      this.appendAssistant(
+        `I found multiple students: ${list}. Reply with option number, student name, or student ID.`,
+        matches.map((student, idx) => ({
+          label: `${idx + 1}) ${student.name} (${student.id})`,
+          event: { type: 'select_student', studentId: student.id },
+        }))
+      );
+      return true;
+    }
+
+    this.pendingStudentAction = action;
+    this.selectStudent(matches[0]);
+    return true;
+  }
+
+  private applyPendingStudentAction(student: Student): void {
+    if (!this.pendingStudentAction) {
+      return;
+    }
+
+    const pending = this.pendingStudentAction;
+    this.pendingStudentAction = null;
+
+    if (pending.feeQuery) {
+      this.agentEvent.emit({ type: 'select_pending_fee', action: pending.action, query: pending.feeQuery });
+    }
+
+    if (pending.amount !== null && pending.amount > 0) {
+      this.agentEvent.emit({ type: 'set_amount', amount: pending.amount });
+    }
+
+    if (pending.feeQuery && pending.amount !== null && pending.amount > 0) {
+      this.appendAssistant(
+        `Opened fee collection for ${student.name}. Selected ${pending.feeQuery} and set amount to ${pending.amount.toFixed(2)}.`
+      );
+      return;
+    }
+
+    if (pending.feeQuery) {
+      this.appendAssistant(`Opened fee collection for ${student.name}. Selected ${pending.feeQuery}.`);
+      return;
+    }
+
+    if (pending.amount !== null && pending.amount > 0) {
+      this.appendAssistant(`Opened fee collection for ${student.name}. Set amount to ${pending.amount.toFixed(2)}.`);
+    }
   }
 
   private tryResolveDisambiguation(text: string): boolean {
@@ -432,6 +606,36 @@ export class AgentChatPanelComponent implements AfterViewChecked {
       this.agentEvent.emit({ type: 'switch_tab', page: 'fees', tab: 'collection' });
       this.agentEvent.emit({ type: 'switch_fee_view', view: 'pending' });
       this.appendAssistant('Fee collection workspace is active. Pick a student by ID or full name to continue.');
+      return;
+    }
+
+    const collectForStudent = this.parseCollectForStudent(raw);
+    if (collectForStudent) {
+      this.resolveStudentAndMaybeQueueAction(collectForStudent.studentToken, {
+        action: 'select',
+        feeQuery: collectForStudent.feeQuery,
+        amount: collectForStudent.amount,
+      });
+      return;
+    }
+
+    const selectFeeForStudent = this.parseSelectFeeForStudent(raw);
+    if (selectFeeForStudent) {
+      this.resolveStudentAndMaybeQueueAction(selectFeeForStudent.studentToken, {
+        action: selectFeeForStudent.action,
+        feeQuery: selectFeeForStudent.feeQuery,
+        amount: null,
+      });
+      return;
+    }
+
+    const payFeeForStudent = this.parsePayFeeForStudent(raw);
+    if (payFeeForStudent) {
+      this.resolveStudentAndMaybeQueueAction(payFeeForStudent.studentToken, {
+        action: 'select',
+        feeQuery: payFeeForStudent.feeQuery,
+        amount: payFeeForStudent.amount,
+      });
       return;
     }
 
@@ -655,7 +859,7 @@ export class AgentChatPanelComponent implements AfterViewChecked {
       }
 
       this.agentEvent.emit({ type: 'save_transaction' });
-      this.appendAssistant('Attempting to save transaction.');
+      this.appendAssistant('Transaction saved successfully.');
       return;
     }
 
@@ -666,6 +870,16 @@ export class AgentChatPanelComponent implements AfterViewChecked {
         this.appendAssistant(`Opened ${page}.`);
         return;
       }
+    }
+
+    if (this.looksLikeStudentLookup(raw)) {
+      const matches = this.findMatches(raw);
+      if (matches.length > 0) {
+        this.processStudentLookup(raw);
+        return;
+      }
+      this.appendAssistant('No student matched that query. Try full name or student ID (for example 20P074).');
+      return;
     }
 
     this.appendAssistant(`I understood this as a general query in ${this.appContext?.screen}. Choose an action to continue.`, [
