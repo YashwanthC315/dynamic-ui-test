@@ -221,6 +221,14 @@ export class AppComponent {
     return this.pendingFeesByStudent[student.id] ?? [];
   }
 
+  get pendingFeeCountByStudent(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const student of this.feeEnabledStudents) {
+      counts[student.id] = (this.pendingFeesByStudent[student.id] ?? []).length;
+    }
+    return counts;
+  }
+
   get paidFeesForSelected(): Receipt[] {
     if (!this.selectedFeeStudent) {
       return [];
@@ -544,6 +552,22 @@ export class AppComponent {
 
     if (event.type === 'set_today_receipt') {
       this.statusMessage = 'Receipt date set to today.';
+      return;
+    }
+
+    if (event.type === 'reset_fee_form') {
+      this.openPage('fees');
+      this.feesTab = 'collection';
+      this.feeCollectionView = 'pending';
+      this.selectedPendingFeeIds.clear();
+      this.feeMode = '';
+      this.feeAmount = '';
+      if (event.scope === 'full') {
+        this.feeStudentId = '';
+        this.statusMessage = 'Fee collection form has been reset. You can select a student to begin again.';
+      } else {
+        this.statusMessage = 'Current fee collection has been cancelled.';
+      }
       return;
     }
 

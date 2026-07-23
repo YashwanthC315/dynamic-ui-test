@@ -53,6 +53,8 @@ Not Implemented As Documented
 - Duplicate response text explicitly allows number, student name, or student ID.
 - User types unique full name and chat selects that student directly.
 - User types valid full student ID and chat selects that student directly.
+- User types invalid student ID (for example, "pick 99P999") and chat returns: "No student found with ID 99P999. Please check the student ID or try a different student."
+- User types unknown name (for example, "pick rohit") and chat returns: "No matching student found. Try the full student name or student ID."
 
 ## Guided Collection Workflow Use Cases
 
@@ -75,6 +77,7 @@ Not Implemented As Documented
 - User types "open receipt for 20P074" and chat selects that student.
 - User types "show pending fees" and chat opens Pending Fees tab when a student is selected (or student is provided in prompt).
 - User types "show paid" and chat opens Fees Paid tab when a student is selected (or student is provided in prompt).
+- User types "show latest receipt" and chat shows latest receipt for selected student.
 - User types "set amount 500" and chat sets amount received to 500.00.
 - User types "mode cash" and chat sets payment mode to Cash.
 - User types "mode cheque" and chat sets payment mode to Cheque.
@@ -87,6 +90,8 @@ Not Implemented As Documented
 - User types "clear selection" or "unselect all" and chat clears selected pending rows.
 - User types "what is selected" and chat returns current student/form summary.
 - User types "save" after valid setup and chat confirms transaction saved.
+- User types "cancel" and chat cancels current fee collection draft and clears working selection/mode/amount.
+- User types "start over" and chat resets the fee collection form so user can select a student again.
 
 ## Validation and Sanity Check Use Cases
 
@@ -95,7 +100,11 @@ Not Implemented As Documented
 - User types "save" without student and chat replies "Select a student first".
 - User types "save" without selected pending row and chat asks to select at least one pending fee.
 - User types "save" without payment mode and chat asks to select payment mode.
+- User types unsupported mode (for example, "mode bitcoin") and chat replies: "Unsupported payment mode. Please choose Cash, Cheque, or Online."
 - User types "save" with mismatch amount and chat shows exact difference.
+- User types "show latest receipt" without a selected student and chat replies "Select a student first."
+- User types "show pending fees for <student>" and chat reports "<student> has no pending fees" when that student's pending list is empty.
+- User types "show latest receipt for <student>" and chat reports "No paid records found for <student>" when no paid history exists.
 
 ## Out-of-Scope and Recovery Use Cases
 

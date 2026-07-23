@@ -274,9 +274,14 @@ export class AgentChatPanelComponent implements AfterViewChecked {
 
   private processStudentLookup(token: string): void {
     const matches = this.findMatches(token);
+    const explicitId = token.match(/\b\d{2}p\d{3}\b/i)?.[0]?.toUpperCase();
 
     if (!matches.length) {
-      this.appendAssistant('No student matched that query. Try student ID (for example 20P074).');
+      if (explicitId) {
+        this.appendAssistant(`No student found with ID ${explicitId}. Please check the student ID or try a different student.`);
+      } else {
+        this.appendAssistant('No matching student found. Try the full student name or student ID.');
+      }
       return;
     }
 
@@ -520,6 +525,13 @@ export class AgentChatPanelComponent implements AfterViewChecked {
     }
 
     const value = text.trim().toLowerCase();
+    if (value === 'cancel') {
+      this.pendingDisambiguation = [];
+      this.pendingStudentAction = null;
+      this.appendAssistant('Current fee collection has been cancelled.');
+      this.agentEvent.emit({ type: 'reset_fee_form', scope: 'draft' });
+      return true;
+    }
     const n = Number(value);
 
     if (Number.isInteger(n) && n >= 1 && n <= this.pendingDisambiguation.length) {
@@ -560,6 +572,22 @@ export class AgentChatPanelComponent implements AfterViewChecked {
       this.appendAssistant('Network timeout noted. No duplicate save was performed. You can safely retry save.', [
         { label: 'Retry save', event: { type: 'save_transaction' } },
       ]);
+      return;
+    }
+
+    if (text === 'cancel' || text === 'cancel flow' || text === 'cancel current flow') {
+      this.pendingDisambiguation = [];
+      this.pendingStudentAction = null;
+      this.agentEvent.emit({ type: 'reset_fee_form', scope: 'draft' });
+      this.appendAssistant('Current fee collection has been cancelled.');
+      return;
+    }
+
+    if (text === 'start over' || text === 'reset form' || text === 'start again') {
+      this.pendingDisambiguation = [];
+      this.pendingStudentAction = null;
+      this.agentEvent.emit({ type: 'reset_fee_form', scope: 'full' });
+      this.appendAssistant('Fee collection form has been reset. You can select a student to begin again.');
       return;
     }
 
@@ -664,6 +692,7 @@ export class AgentChatPanelComponent implements AfterViewChecked {
 
     if (isStudentSelectIntent && !isFeeSelectionCommand) {
       const matches = this.findStudentCandidatesFromPrompt(raw);
+      const explicitId = raw.match(/\b\d{2}p\d{3}\b/i)?.[0]?.toUpperCase();
 
       if (matches.length === 1) {
         this.selectStudent(matches[0]);
@@ -682,6 +711,13 @@ export class AgentChatPanelComponent implements AfterViewChecked {
         );
         return;
       }
+
+      if (explicitId) {
+        this.appendAssistant(`No student found with ID ${explicitId}. Please check the student ID or try a different student.`);
+      } else {
+        this.appendAssistant('No matching student found. Try the full student name or student ID.');
+      }
+      return;
     }
 
     if (text.includes('show latest receipt for')) {
@@ -692,12 +728,30 @@ export class AgentChatPanelComponent implements AfterViewChecked {
       const studentName = match?.name ?? this.feeContext?.selectedStudentName;
       const latest = (this.feeContext?.receipts ?? []).find((item: any) => item.studentId === studentId);
       if (!latest) {
-        this.appendAssistant('No paid records found for that student yet.');
+        this.appendAssistant(studentName ? `No paid records found for ${studentName}.` : 'No paid records found for that student yet.');
       } else {
         this.appendAssistant(
           `Latest receipt for ${studentName}: ${latest.receiptNo}, amount INR ${latest.amount}, paid on ${latest.date}.`
         );
       }
+      return;
+    }
+
+    if (text === 'show latest receipt') {
+      if (!this.feeContext?.selectedStudentId) {
+        this.appendAssistant('Select a student first.');
+        return;
+      }
+
+      const latest = (this.feeContext?.receipts ?? []).find((item: any) => item.studentId === this.feeContext?.selectedStudentId);
+      if (!latest) {
+        this.appendAssistant(`No paid records found for ${this.feeContext?.selectedStudentName}.`);
+        return;
+      }
+
+      this.appendAssistant(
+        `Latest receipt for ${this.feeContext.selectedStudentName}: ${latest.receiptNo}, amount INR ${latest.amount}, paid on ${latest.date}.`
+      );
       return;
     }
 
@@ -709,7 +763,12 @@ export class AgentChatPanelComponent implements AfterViewChecked {
           const student = matches[0];
           this.agentEvent.emit({ type: 'select_student', studentId: student.id });
           this.agentEvent.emit({ type: 'switch_fee_view', view: 'pending' });
-          this.appendAssistant(`Opened Pending Fees tab for ${student.name}.`);
+          const pendingCount = Number(this.feeContext?.pendingFeeCounts?.[student.id] ?? NaN);
+          if (Number.isFinite(pendingCount) && pendingCount === 0) {
+            this.appendAssistant(`${student.name} has no pending fees.`);
+          } else {
+            this.appendAssistant(`Opened Pending Fees tab for ${student.name}.`);
+          }
           return;
         }
 
@@ -766,6 +825,11 @@ export class AgentChatPanelComponent implements AfterViewChecked {
     if (text.includes('mode online')) {
       this.agentEvent.emit({ type: 'set_fee_mode', mode: 'online' });
       this.appendAssistant('Payment mode set to Online.');
+      return;
+    }
+
+    if (text.includes('mode ') || text.includes('payment mode')) {
+      this.appendAssistant('Unsupported payment mode. Please choose Cash, Cheque, or Online.');
       return;
     }
 
@@ -878,7 +942,7 @@ export class AgentChatPanelComponent implements AfterViewChecked {
         this.processStudentLookup(raw);
         return;
       }
-      this.appendAssistant('No student matched that query. Try full name or student ID (for example 20P074).');
+      this.appendAssistant('No matching student found. Try the full student name or student ID.');
       return;
     }
 
