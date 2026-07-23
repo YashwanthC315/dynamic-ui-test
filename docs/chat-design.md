@@ -55,7 +55,6 @@
 | Shift+Enter | Newline, never submits |
 | Ctrl/Cmd+Enter | Submit (power-user shortcut) |
 | Alt+Enter | Newline (reserved for host-specific use) |
-| IME composition active | No submit |
 
 - Prevent duplicate submits.
 - Trim only for empty-check; preserve original text in payload.
