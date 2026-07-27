@@ -75,13 +75,13 @@ export class AppComponent {
 
 	// This input can hold any domain/site-specific context your app wants
 	// to send with chat requests.
-	feeContext = {
+	hostContext = {
 		domain: 'generic-site',
 		activeEntityId: null,
 		filters: {},
 	};
 
-	students = [];
+	entities = [];
 
 	onAgentEvent(event: Record<string, unknown>): void {
 		// Map chat actions to your app navigation/state updates.
@@ -94,8 +94,8 @@ export class AppComponent {
 <app-agent-chat-panel
 	[isOpen]="isAgentOpen"
 	[appContext]="appContext"
-	[feeContext]="feeContext"
-	[students]="students"
+	[hostContext]="hostContext"
+	[entities]="entities"
 	(agentEvent)="onAgentEvent($event)"
 ></app-agent-chat-panel>
 ```
@@ -163,7 +163,7 @@ Requirements:
 	 - shared/agent-chat-panel/styles/agent-chat-panel.css
 2) Render the panel as a sidebar (or drawer) on the main shell page.
 3) Add a toggle button in the host UI to open/close the panel.
-4) Pass appContext, feeContext, and students inputs from host state using host-appropriate values.
+4) Pass appContext, hostContext, and entities inputs from host state using host-appropriate values.
 5) Handle agentEvent output with a generic host adapter so events can trigger host-specific navigation/state actions.
 6) Register HARNESS_TRANSPORT_CLIENT with the mock harness in app configuration.
 7) Import shared .agent-* styles and override them so the panel matches this app's visual design system.
@@ -189,6 +189,8 @@ Use quick commands or type prompts in chat, such as:
 - `help`
 - `status summary`
 - `simulate error`
+- `show overview`
+- `open settings`
 
 ## Prompt Interpretation (Current Logic)
 

@@ -22,11 +22,10 @@ import {
 } from '../services/chat-contracts';
 import { ChatTransportAdapterService } from '../services/chat-transport-adapter.service';
 
-interface Student {
+interface ChatEntity {
   id: string;
-  name: string;
-  course: string;
-  enabledInFeeCollection: boolean;
+  label?: string;
+  [key: string]: unknown;
 }
 
 type MessageRole = 'assistant' | 'user' | 'system' | 'error';
@@ -50,8 +49,10 @@ interface ConversationMessage {
 export class AgentChatPanelComponent implements AfterViewChecked, OnInit {
   @Input() isOpen = false;
   @Input() appContext: Record<string, unknown> | null = null;
+  @Input() hostContext: Record<string, unknown> | null = null;
   @Input() feeContext: Record<string, unknown> | null = null;
-  @Input() students: Student[] = [];
+  @Input() entities: ChatEntity[] = [];
+  @Input() students: Array<Record<string, unknown>> = [];
 
   @Output() agentEvent = new EventEmitter<Record<string, unknown>>();
   @Output() status = new EventEmitter<string>();
@@ -100,13 +101,13 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnInit {
             items: [
               {
                 id: 's1',
-                label: 'Show board',
-                action: { id: 'a1', label: 'Show board', payload: { type: 'navigate', page: 'dashboard' } },
+                label: 'Show overview',
+                action: { id: 'a1', label: 'Show overview', payload: { type: 'navigate', route: 'overview' } },
               },
               {
                 id: 's2',
-                label: 'Open fee collection',
-                action: { id: 'a2', label: 'Open fee collection', payload: { type: 'switch_tab', page: 'fees', tab: 'collection' } },
+                label: 'Open help',
+                action: { id: 'a2', label: 'Open help', payload: { type: 'open_help_center' } },
               },
             ],
           },
@@ -125,14 +126,14 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnInit {
   }
 
   get contextLabel(): string {
-    const app = String(this.appContext?.['app'] ?? 'CampusTrack');
-    const screen = String(this.appContext?.['screen'] ?? 'dashboard');
+    const app = String(this.appContext?.['app'] ?? 'Application');
+    const screen = String(this.appContext?.['screen'] ?? 'current-screen');
     return `${app} / ${screen}`;
   }
 
   get contextTabDetail(): string | null {
-    const screen = String(this.appContext?.['screen'] ?? 'dashboard');
-    if (screen === 'dashboard') {
+    const screen = String(this.appContext?.['screen'] ?? 'current-screen');
+    if (screen === 'current-screen') {
       return null;
     }
 
@@ -538,6 +539,9 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnInit {
   }
 
   private buildRequest(prompt: string, messageId: string): ChatRequest {
+    const appName = String(this.appContext?.['app'] ?? 'web-host');
+    const normalizedAppId = appName.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/(^-|-$)/g, '') || 'web-host';
+
     return {
       schemaVersion: '1.0.0',
       requestId: this.createId('req'),
@@ -555,19 +559,21 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnInit {
         'blocks.error',
       ],
       client: {
-        appId: 'campustrack-ui',
-        appVersion: 'mock-1',
-        locale: 'en-IN',
+        appId: normalizedAppId,
+        appVersion: 'ui-shared-1',
+        locale: 'en',
       },
     };
   }
 
   private buildContextSnapshot(): ChatContext {
+    const hostPayload = this.hostContext ?? this.feeContext;
+
     return {
       app: this.sanitizeContext(this.appContext),
-      fee: this.sanitizeContext(this.feeContext),
-      roster: {
-        totalStudents: this.students.length,
+      host: this.sanitizeContext(hostPayload),
+      catalog: {
+        itemCount: this.entities.length || this.students.length,
       },
     };
   }

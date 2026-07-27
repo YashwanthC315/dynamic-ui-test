@@ -2,9 +2,9 @@ export type ChatResponseStatus = 'completed' | 'failed' | 'cancelled';
 
 export interface ChatContext {
   app: Record<string, unknown>;
-  fee: Record<string, unknown>;
-  roster: {
-    totalStudents: number;
+  host: Record<string, unknown>;
+  catalog: {
+    itemCount: number;
   };
 }
 

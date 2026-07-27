@@ -21,8 +21,8 @@ export class MockAgentHarnessService {
           type: 'markdown',
           markdown: [
             'I can return typed blocks, quick actions, and data summaries.',
-            '- Try: show board',
-            '- Try: open fee collection',
+            '- Try: show overview',
+            '- Try: open settings',
             '- Try: status summary',
           ].join('\n'),
         },
@@ -31,64 +31,66 @@ export class MockAgentHarnessService {
           items: [
             {
               id: 'help-1',
-              label: 'Show board',
-              action: { id: 'a-help-1', label: 'Show board', payload: { type: 'navigate', page: 'dashboard' } },
+              label: 'Show overview',
+              action: { id: 'a-help-1', label: 'Show overview', payload: { type: 'navigate', route: 'overview' } },
             },
             {
               id: 'help-2',
-              label: 'Open fee collection',
-              action: { id: 'a-help-2', label: 'Open fee collection', payload: { type: 'switch_tab', page: 'fees', tab: 'collection' } },
+              label: 'Open settings',
+              action: { id: 'a-help-2', label: 'Open settings', payload: { type: 'navigate', route: 'settings' } },
             },
           ],
         }
       );
-    } else if (lowerPrompt.includes('show board')) {
+    } else if (lowerPrompt.includes('show overview')) {
       blocks.push(
-        { type: 'text', text: 'Navigating to dashboard board view.' },
+        { type: 'text', text: 'Navigating to overview view.' },
         {
           type: 'suggestions',
           items: [
             {
               id: 'board-1',
-              label: 'Open dashboard',
-              action: { id: 'a-board-1', label: 'Open dashboard', payload: { type: 'navigate', page: 'dashboard' } },
+              label: 'Open overview',
+              action: { id: 'a-board-1', label: 'Open overview', payload: { type: 'navigate', route: 'overview' } },
             },
           ],
         }
       );
-    } else if (lowerPrompt.includes('open fee collection')) {
+    } else if (lowerPrompt.includes('open settings')) {
       blocks.push(
         {
           type: 'text',
-          text: 'Opening the fee collection tab and pending fee view.',
+          text: 'Opening settings.',
         },
         {
           type: 'suggestions',
           items: [
             {
-              id: 'fees-1',
-              label: 'Open fee collection',
-              action: { id: 'a-fees-1', label: 'Open fee collection', payload: { type: 'switch_tab', page: 'fees', tab: 'collection' } },
+              id: 'settings-1',
+              label: 'Open settings',
+              action: { id: 'a-settings-1', label: 'Open settings', payload: { type: 'navigate', route: 'settings' } },
             },
             {
-              id: 'fees-2',
-              label: 'Show pending rows',
-              action: { id: 'a-fees-2', label: 'Show pending rows', payload: { type: 'switch_fee_view', view: 'pending' } },
+              id: 'settings-2',
+              label: 'Back to overview',
+              action: { id: 'a-settings-2', label: 'Back to overview', payload: { type: 'navigate', route: 'overview' } },
             },
           ],
         }
       );
     } else if (lowerPrompt.includes('status summary')) {
-      const selectedStudent = String(request.context.fee['selectedStudentName'] ?? 'None');
-      const selectedCount = Number(request.context.fee['selectedPendingCount'] ?? 0);
-      const amount = String(request.context.fee['amount'] ?? '0');
+      const appName = String(request.context.app['app'] ?? 'Unknown');
+      const activeScreen = String(request.context.app['screen'] ?? 'Unknown');
+      const contextKeys = Object.keys(request.context.host ?? {}).length;
+      const catalogItems = Number(request.context.catalog?.itemCount ?? 0);
 
       blocks.push({
         type: 'data',
         items: [
-          { key: 'Selected student', value: selectedStudent },
-          { key: 'Selected pending count', value: String(selectedCount) },
-          { key: 'Entered amount', value: amount },
+          { key: 'App', value: appName },
+          { key: 'Screen', value: activeScreen },
+          { key: 'Host context keys', value: String(contextKeys) },
+          { key: 'Catalog items', value: String(catalogItems) },
         ],
       });
     } else if (lowerPrompt.includes('simulate error')) {

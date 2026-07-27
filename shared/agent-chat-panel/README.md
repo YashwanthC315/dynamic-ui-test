@@ -25,6 +25,17 @@ Suggested destination in an app:
 
 Then import `styles/agent-chat-panel.css` rules into the app-level stylesheet.
 
+Recommended shared component inputs in host templates:
+
+- `[appContext]`: high-level app/screen metadata.
+- `[hostContext]`: domain-specific context payload.
+- `[entities]`: optional generic entity list for count/context.
+
+Backward compatibility aliases are still accepted:
+
+- `[feeContext]` (legacy alias of `hostContext`)
+- `[students]` (legacy alias of `entities`)
+
 The host app should decide:
 
 - Sidebar placement (left/right, docked, drawer, overlay).
