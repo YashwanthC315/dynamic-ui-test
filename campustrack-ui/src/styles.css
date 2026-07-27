@@ -204,6 +204,13 @@ app-agent-chat-panel {
   color: #667da8;
 }
 
+.agent-request-pill {
+  margin: 6px 0 0;
+  color: #0f4ba8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .agent-thread {
   display: flex;
   flex-direction: column;
@@ -246,6 +253,85 @@ app-agent-chat-panel {
   white-space: pre-wrap;
 }
 
+.agent-block-list {
+  display: grid;
+  gap: 6px;
+}
+
+.agent-text {
+  margin: 0;
+}
+
+.agent-markdown {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #24344f;
+}
+
+.agent-status {
+  margin: 0;
+  font-size: 12px;
+  color: #2e4b74;
+}
+
+.agent-status-loading::before {
+  content: '... ';
+}
+
+.agent-data {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.agent-data-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.agent-data dt {
+  margin: 0;
+  color: #355282;
+  font-size: 12px;
+}
+
+.agent-data dd {
+  margin: 0;
+  color: #16273f;
+  font-size: 12px;
+  text-align: right;
+}
+
+.agent-link {
+  color: #0e52cb;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+.agent-error p {
+  margin: 0;
+  color: #8a1f1f;
+  font-size: 13px;
+}
+
+.agent-error small {
+  display: block;
+  margin-top: 4px;
+  color: #7c3a3a;
+}
+
+.agent-msg-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10px;
+  color: #6e7f9a;
+}
+
 .agent-msg-user {
   border-color: #8fb5f4;
   background: #dbeafe;
@@ -274,6 +360,22 @@ app-agent-chat-panel {
   color: #fff;
   border-radius: 6px;
   padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.agent-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.agent-toolbar-btn {
+  border: 1px solid #9ca9bc;
+  background: #f7f9fc;
+  color: #1f365d;
+  border-radius: 6px;
+  padding: 4px 8px;
   font-size: 12px;
   cursor: pointer;
 }
@@ -347,6 +449,18 @@ app-agent-chat-panel {
   padding: 7px 10px;
   font-size: 13px;
   cursor: pointer;
+}
+
+.agent-send-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.agent-char-meta {
+  margin: 6px 0 0;
+  text-align: right;
+  color: #607393;
+  font-size: 11px;
 }
 
 .dashboard {

@@ -120,3 +120,16 @@ Not Implemented As Documented
 - Combined natural-language prompts are supported through rules (for example: collect/take/receive from <student> for <fee>, pay <fee> for <student>, select <fee> for <student>).
 - Board help is intentionally compact and does not include "Pick rahul" as a clickable help option.
 - Extended features such as receipt PDF export are not implemented yet.
+
+## Agentic Interpretation Design (Implemented)
+
+- Student/receipt prompt handling now uses a structured interpreter service, not a single boolean branch in the component.
+- Intent detection is separated from student-reference extraction and action dispatch.
+- Interpreter outputs structured results:
+	- resolved command (for example, student.select, receipt.open)
+	- needs clarification (for missing student reference)
+	- unrecognized
+- Confidence gating is applied in the interpreter for student/receipt intents before command resolution.
+- Bare student ID is treated as an entity signal, not standalone intent. The action phrase must match an intent pattern.
+- Conversation context is used for omitted student references in receipt-opening flows when a student is already selected.
+- Component now uses interpreter output to decide UI actions (select student, open paid view, or ask clarification), reducing brittle coupling between regex checks and UI behavior.
