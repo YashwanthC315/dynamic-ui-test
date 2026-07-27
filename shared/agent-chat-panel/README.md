@@ -25,8 +25,16 @@ Suggested destination in an app:
 
 Then import `styles/agent-chat-panel.css` rules into the app-level stylesheet.
 
+The host app should decide:
+
+- Sidebar placement (left/right, docked, drawer, overlay).
+- Open/close interaction and shell layout behavior.
+- Final visual theming via `.agent-*` style overrides.
+
 ## Notes
 
 - The component remains domain-agnostic at the UI layer.
 - Host app owns navigation/state updates from `agentEvent` output.
-- Replace `MockAgentHarnessService` with a real harness/API transport for production.
+- AI/agent backend integration is intentionally deferred.
+- Keep `MockAgentHarnessService` for initial UI integration.
+- Replace mock transport with website/domain-specific agent integration later.

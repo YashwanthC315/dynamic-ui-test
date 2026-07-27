@@ -1,8 +1,8 @@
 # Dynamic UI Test (Angular)
 
-This repository contains a chat-driven operations UI built with Angular. The left panel is a reusable chat component, and the right panel currently hosts a dedicated fee collection form component.
+This repository contains a chat-driven operations UI built with Angular. The reusable chat panel can be embedded into any Angular website/application as a sidebar.
 
-Current goal: focus on one production-like workflow (fee collection) while keeping chat independent for site-wide reuse.
+Current goal: keep chat integration reusable across multiple apps while using CampusTrack as one demo host.
 
 Angular app location: `campustrack-ui`
 
@@ -14,7 +14,7 @@ The app currently focuses on:
 
 - Fee Collection
 
-The chat drives the fee collection workflow by interpreting predefined commands.
+In CampusTrack, the chat is currently connected to demo workflows. The shared component itself is host-agnostic.
 
 ## Component Structure
 
@@ -38,7 +38,7 @@ Use this shared folder as the canonical source when integrating chat into curren
 
 ## Integrate Agent Chat Panel Into Another Angular App
 
-Use this guide when you want to move the reusable chat panel into a different Angular website/application.
+Use this guide when you want to move the reusable chat panel into any Angular website/application.
 
 ### 1) Copy the reusable chat files
 
@@ -68,23 +68,24 @@ export class AppComponent {
 
 	appContext = {
 		app: 'YourApp',
-		screen: 'dashboard',
+		screen: 'home',
 		tab: null,
 		role: 'operator',
 	};
 
+	// This input can hold any domain/site-specific context your app wants
+	// to send with chat requests.
 	feeContext = {
-		selectedStudentId: null,
-		selectedStudentName: null,
-		totalDue: 0,
-		selectedPendingCount: 0,
-		amount: '',
+		domain: 'generic-site',
+		activeEntityId: null,
+		filters: {},
 	};
 
 	students = [];
 
 	onAgentEvent(event: Record<string, unknown>): void {
 		// Map chat actions to your app navigation/state updates.
+		// Keep this host-specific and domain-specific.
 	}
 }
 ```
@@ -133,6 +134,12 @@ For production, replace `MockAgentHarnessService` with your API-backed implement
 The component uses class names such as `.agent-panel`, `.agent-msg`, `.agent-input`, and `.agent-action-btn`.
 Copy or import `shared/agent-chat-panel/styles/agent-chat-panel.css` into your target app stylesheet (or component theme file), otherwise the panel will render unstyled.
 
+To align with your website design:
+
+- Override `.agent-*` classes in your app stylesheet after importing the shared CSS.
+- Keep your host layout responsible for sidebar placement and open/close behavior.
+- Render the panel either as a fixed sidebar, docked sidebar, or drawer based on your design system.
+
 ### 5) Wire host actions
 
 The panel emits action payloads through `(agentEvent)`. Handle them in your host component (navigate pages, switch tabs, prefill forms, etc.).
@@ -141,7 +148,7 @@ The panel also accepts contextual inputs via `[appContext]` and `[feeContext]`; 
 
 ## Example Prompt For A Coding Agent
 
-Use the following prompt when asking a coding agent to integrate this panel into a new Angular app after you provide the component and services files:
+Use the following prompt when asking a coding agent to integrate this panel into a new Angular app after you provide the shared folder:
 
 ```text
 Integrate the reusable Agent Chat Panel into this Angular app.
@@ -154,45 +161,42 @@ Requirements:
 	 - shared/agent-chat-panel/services/chat-transport-adapter.service.ts
 	 - shared/agent-chat-panel/services/mock-agent-harness.service.ts
 	 - shared/agent-chat-panel/styles/agent-chat-panel.css
-2) Render the panel as a right-side overlay/panel on the main shell page.
+2) Render the panel as a sidebar (or drawer) on the main shell page.
 3) Add a toggle button in the host UI to open/close the panel.
-4) Pass appContext, feeContext, and students inputs from host state.
-5) Handle agentEvent output to support at least:
-	 - navigate to dashboard
-	 - switch to fees tab: collection
-	 - switch fee view: pending/paid
+4) Pass appContext, feeContext, and students inputs from host state using host-appropriate values.
+5) Handle agentEvent output with a generic host adapter so events can trigger host-specific navigation/state actions.
 6) Register HARNESS_TRANSPORT_CLIENT with the mock harness in app configuration.
-7) Copy required .agent-* styles so the panel is visually correct.
+7) Import shared .agent-* styles and override them so the panel matches this app's visual design system.
 8) Keep all existing app behavior unchanged.
 9) Run tests/build and fix any compile errors caused by integration.
+10) Do not add fee-specific, dashboard-specific, or domain-specific assumptions inside the shared chat component.
+
+Scope note:
+- AI/agent backend integration is deferred.
+- Keep mock transport in place for now.
+- The final transport and intent/action logic will be implemented per website/domain later.
 
 Deliverables:
 - List of changed files
 - Short summary of integration decisions
-- Any follow-up TODOs for replacing mock transport with real API transport
+- Any follow-up TODOs for replacing mock transport with real website/domain agent integration
 ```
 
 ## Example Prompts
 
 Use quick commands or type prompts in chat, such as:
 
-- `pick student a`
-- `set amount 500`
-- `mode cash`
-- `show paid tab`
+- `help`
+- `status summary`
+- `simulate error`
 
 ## Prompt Interpretation (Current Logic)
 
-Prompt matching is keyword-based inside the fee collection component:
+Current mock harness behavior is keyword-based and demo-only.
 
-- Student selection by phrases like `student a` or explicit IDs like `20p074`
-- Payment mode shortcuts: `cash`, `cheque`, `online`
-- Amount parsing from numeric prompts
-- Tab switching commands: `show paid tab`, `show pending tab`
-
-Additional behavior:
-
-- Unknown prompts return a fee-focused guidance message in chat.
+- It returns typed blocks (status/text/markdown/data/suggestions).
+- It supports basic demo prompts from the examples above.
+- Unknown prompts are still sent as-is and receive a safe fallback response.
 
 ## Fee Collection Features
 
@@ -251,12 +255,12 @@ The app hot-reloads on file changes.
 
 ## Current Limitations
 
-- Prompt parsing is rule/keyword based, not model-based intent parsing.
-- Chat and fee form are connected in-memory through the root component.
-- No persistence layer or backend orchestration is connected yet.
+- Prompt handling is rule/keyword based in the mock harness, not model-based.
+- No production AI agent/backend integration is connected yet.
+- Final domain-specific action mapping must be implemented by each host app.
 
 ## Next Enhancements
 
-- Add richer intent extraction for fee collection commands and validation feedback.
-- Add API integration for student search, pending fees, and receipt save operations.
-- Reuse `AgentChatPanelComponent` in other pages and connect via a shared chat service.
+- Add a production transport adapter per website/domain.
+- Add host-specific action adapters for navigation/state mutations.
+- Keep `shared/agent-chat-panel` as the canonical reusable chat UI source.
