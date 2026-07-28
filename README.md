@@ -144,7 +144,7 @@ To align with your website design:
 
 The panel emits action payloads through `(agentEvent)`. Handle them in your host component (navigate pages, switch tabs, prefill forms, etc.).
 
-The panel also accepts contextual inputs via `[appContext]` and `[feeContext]`; keep them updated so the harness receives accurate context with each prompt.
+The panel also accepts contextual inputs via `[appContext]` and `[hostContext]`; keep them updated so the harness receives accurate context with each prompt.
 
 ## Example Prompt For A Coding Agent
 
@@ -161,15 +161,25 @@ Requirements:
 	 - shared/agent-chat-panel/services/chat-transport-adapter.service.ts
 	 - shared/agent-chat-panel/services/mock-agent-harness.service.ts
 	 - shared/agent-chat-panel/styles/agent-chat-panel.css
-2) Render the panel as a sidebar (or drawer) on the main shell page.
-3) Add a toggle button in the host UI to open/close the panel.
-4) Pass appContext, hostContext, and entities inputs from host state using host-appropriate values.
-5) Handle agentEvent output with a generic host adapter so events can trigger host-specific navigation/state actions.
-6) Register HARNESS_TRANSPORT_CLIENT with the mock harness in app configuration.
-7) Import shared .agent-* styles and override them so the panel matches this app's visual design system.
-8) Keep all existing app behavior unchanged.
-9) Run tests/build and fix any compile errors caused by integration.
-10) Do not add fee-specific, dashboard-specific, or domain-specific assumptions inside the shared chat component.
+2) Add an Agent trigger in host navigation:
+	 - If app has existing sidebar/nav rail, add Agent button there.
+	 - If app has no sidebar, add a fixed floating Agent button.
+3) Agent button must toggle a side chat panel (drawer/sidebar) open and closed.
+4) Render the panel attached to viewport edge (left or right), not inline in content.
+5) Pass appContext, hostContext, and entities inputs from host state using host-appropriate values.
+6) Handle agentEvent output with a generic host adapter so events can trigger host-specific navigation/state actions.
+7) Register HARNESS_TRANSPORT_CLIENT with the mock harness in app configuration.
+8) Import shared .agent-* styles and override them so the panel matches this app's visual design system.
+9) Keep all existing app behavior unchanged.
+10) Run tests/build and fix any compile errors caused by integration.
+11) Do not add fee-specific, dashboard-specific, or domain-specific assumptions inside the shared chat component.
+
+Acceptance criteria:
+- Agent button visible on initial load.
+- Agent button opens and closes side chat panel.
+- Chat panel appears as side drawer/sidebar.
+- Existing routes/pages still work.
+- Build succeeds.
 
 Scope note:
 - AI/agent backend integration is deferred.
@@ -180,6 +190,7 @@ Deliverables:
 - List of changed files
 - Short summary of integration decisions
 - Any follow-up TODOs for replacing mock transport with real website/domain agent integration
+- Explicit confirmation of each acceptance criterion
 ```
 
 ## Example Prompts
