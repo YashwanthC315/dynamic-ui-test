@@ -2,7 +2,10 @@
 
 ## 1. Overview
 
-The chatbox acts as a renderer for UI elements returned by a backend
+The chatbox should be completely domain-agnostic. It should not know
+about Git, CHF, Jira, Kubernetes, or any business logic.
+
+Instead, it acts as a renderer for UI elements returned by a backend
 harness.
 
     Angular Chat Component
@@ -283,7 +286,34 @@ Typical flow:
 
 ------------------------------------------------------------------------
 
-## 12. Component Registry
+## 12. Progress Updates
+
+Long-running operations should stream progress.
+
+Example:
+
+``` json
+{
+  "type": "progress",
+  "status": "running",
+  "steps": [
+    "Finding repository",
+    "Checking branch",
+    "Cherry-picking",
+    "Running tests"
+  ]
+}
+```
+
+Updates can be delivered using:
+
+-   WebSockets
+-   Server-Sent Events (SSE)
+-   Polling
+
+------------------------------------------------------------------------
+
+## 13. Component Registry
 
 A registry keeps the chat component generic.
 
@@ -303,7 +333,7 @@ Adding a new UI element requires only:
 
 ------------------------------------------------------------------------
 
-## 13. Overall Workflow
+## 14. Overall Workflow
 
     User asks question
             │
@@ -335,7 +365,7 @@ Adding a new UI element requires only:
 
 ------------------------------------------------------------------------
 
-## 14. Recommended Separation of Responsibilities
+## 15. Recommended Separation of Responsibilities
 
 ### Chat Component
 
@@ -376,7 +406,7 @@ Each component accepts JSON configuration and emits events.
 
 ------------------------------------------------------------------------
 
-## 15. Key Design Principles
+## 16. Key Design Principles
 
 -   Keep the chatbox completely domain-agnostic.
 -   Treat every response as one or more renderable UI blocks.
