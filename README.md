@@ -151,46 +151,79 @@ The panel also accepts contextual inputs via `[appContext]` and `[hostContext]`;
 Use the following prompt when asking a coding agent to integrate this panel into a new Angular app after you provide the shared folder:
 
 ```text
-Integrate the reusable Agent Chat Panel into this Angular app.
+Integrate the reusable Agent Chat Panel into this website without changing the existing application shell.
 
-Requirements:
-1) Use the provided files:
-	 - shared/agent-chat-panel/components/agent-chat-panel.component.ts
-	 - shared/agent-chat-panel/components/agent-chat-panel.component.html
-	 - shared/agent-chat-panel/services/chat-contracts.ts
-	 - shared/agent-chat-panel/services/chat-transport-adapter.service.ts
-	 - shared/agent-chat-panel/services/mock-agent-harness.service.ts
-	 - shared/agent-chat-panel/styles/agent-chat-panel.css
-2) Add an Agent trigger in host navigation:
-	 - If app has existing sidebar/nav rail, add Agent button there.
-	 - If app has no sidebar, add a fixed floating Agent button.
-3) Agent button must toggle a side chat panel (drawer/sidebar) open and closed.
-4) Render the panel attached to viewport edge (left or right), not inline in content.
-5) Pass appContext, hostContext, and entities inputs from host state using host-appropriate values.
-6) Handle agentEvent output with a generic host adapter so events can trigger host-specific navigation/state actions.
-7) Register HARNESS_TRANSPORT_CLIENT with the mock harness in app configuration.
-8) Import shared .agent-* styles and override them so the panel matches this app's visual design system.
-9) Keep all existing app behavior unchanged.
-10) Run tests/build and fix any compile errors caused by integration.
-11) Do not add fee-specific, dashboard-specific, or domain-specific assumptions inside the shared chat component.
+First inspect the host layout and identify:
+- The global header/banner.
+- The existing sidebar/nav rail.
+- The main routed-content region.
+- Any sidebar open/close state or layout mode state.
+- Any host components using generic selectors such as `header`, `nav`, or `aside`.
 
-Acceptance criteria:
-- Agent button visible on initial load.
-- Agent button opens and closes side chat panel.
-- Chat panel appears as side drawer/sidebar.
-- Existing routes/pages still work.
-- Build succeeds.
+Use these shared files unchanged in purpose:
+- shared/agent-chat-panel/components/agent-chat-panel.component.ts
+- shared/agent-chat-panel/components/agent-chat-panel.component.html
+- shared/agent-chat-panel/services/chat-contracts.ts
+- shared/agent-chat-panel/services/chat-transport-adapter.service.ts
+- shared/agent-chat-panel/services/mock-agent-harness.service.ts
+- shared/agent-chat-panel/styles/agent-chat-panel.css
 
-Scope note:
-- AI/agent backend integration is deferred.
-- Keep mock transport in place for now.
-- The final transport and intent/action logic will be implemented per website/domain later.
+Layout requirements:
+
+1. If the host has a sidebar/nav rail:
+   - Add the Agent trigger as a real navigation item inside that sidebar.
+   - Place it at the bottom of the sidebar navigation.
+   - Do not position it as a floating button, overlay, or absolutely positioned control in empty sidebar space.
+   - The Agent trigger must use the sidebar’s existing visual language.
+
+2. When opened:
+   - Render the chat as an extension of the existing sidebar.
+   - The layout order must be:
+
+     [existing nav rail] [resizable Agent panel] [main routed content]
+
+   - The Agent panel must be part of the page layout, not a viewport-fixed overlay.
+   - It must not create an extra row or push the application content downward.
+   - The main header/banner must remain in its existing location and must not be moved into or duplicated inside the Agent panel.
+   - The Agent panel must contain only Agent UI. Do not render host header, burger controls, user menus, logs, notifications, dashboard links, or navigation menus inside it.
+   - Preserve the panel’s resize behavior.
+   - If the sidebar is collapsed or switched to another navigation mode, close the Agent panel automatically and restore the original layout.
+
+3. If the host has no sidebar:
+   - Use a fixed floating Agent trigger and viewport-edge drawer instead.
+
+Host integration requirements:
+
+- Pass `appContext`, `hostContext`, and `entities` from host state.
+- Keep all host-specific navigation/state handling in a generic host adapter.
+- Handle `agentEvent` without adding domain assumptions to the shared component.
+- Register `HARNESS_TRANSPORT_CLIENT` with `MockAgentHarnessService`.
+- Import the shared Agent styles and add host-specific overrides outside the shared component.
+- Avoid selector collisions with host components. For example, if the host uses `header` as an Angular component selector, do not use a native `<header>` element inside the shared panel; use a non-conflicting wrapper with an accessibility role instead.
+- Keep all existing routes, header behavior, sidebar behavior, and page content unchanged when Agent is closed.
+
+Validation:
+
+- Verify visually that:
+  - There is exactly one host header.
+  - There is exactly one sidebar/nav rail.
+  - The Agent button is inside the sidebar at the bottom.
+  - The Agent panel is directly adjacent to the sidebar.
+  - No host navigation or header controls appear inside the Agent panel.
+  - Main content is beside the Agent panel, not below it.
+  - Resizing works.
+  - Closing/collapsing the host sidebar also closes Agent.
+- Run the build and tests.
+- Fix integration-caused compile or template errors.
 
 Deliverables:
-- List of changed files
-- Short summary of integration decisions
-- Any follow-up TODOs for replacing mock transport with real website/domain agent integration
-- Explicit confirmation of each acceptance criterion
+
+- List of changed files.
+- Layout/integration decisions.
+- Visual verification summary.
+- Build/test results.
+- TODOs for replacing mock transport and adding domain-specific intent handling later.
+- Explicit confirmation of every acceptance criterion.
 ```
 
 ## Example Prompts
