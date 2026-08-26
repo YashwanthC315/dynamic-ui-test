@@ -1,0 +1,239 @@
+<aside #panelRoot class="agent-panel" [style.width.px]="panelWidth" aria-label="AI Agent Chat" *ngIf="isOpen">
+  <div
+    class="agent-resizer"
+    role="separator"
+    aria-orientation="vertical"
+    aria-label="Resize AI panel"
+    (mousedown)="startResize($event)"
+  ></div>
+
+  <div class="agent-head" role="banner">
+    <h3>
+      AI Agent
+      <small *ngIf="currentAgentDisplay" class="agent-head-agent">— {{ currentAgentDisplay }}</small>
+    </h3>
+    <div class="agent-head-actions" aria-label="Chat actions">
+      <button type="button" class="agent-head-action" title="New chat" aria-label="New chat" (click)="startNewChat()">
+        <i class="fa fa-plus" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="agent-head-action" title="Search chats" aria-label="Search chats" (click)="toggleSearch()">
+        <i class="fa fa-search" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="agent-head-action" title="Chat history" aria-label="Chat history" (click)="toggleHistory()">
+        <i class="fa fa-history" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="agent-search" *ngIf="isSearchOpen">
+      <div class="agent-search-field">
+        <input
+          #searchRef
+          type="search"
+          class="agent-search-input"
+          placeholder="Search this conversation"
+          aria-label="Search this conversation"
+          [(ngModel)]="searchTerm"
+          autocomplete="off"
+        />
+        <button
+          type="button"
+          class="agent-search-clear"
+          *ngIf="searchTerm"
+          aria-label="Clear search"
+          title="Clear search"
+          (click)="clearSearch()"
+        >
+          <i class="fa fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      <span class="agent-search-count" *ngIf="searchTerm.trim()">
+        {{ filteredMessages.length }} result{{ filteredMessages.length === 1 ? '' : 's' }}
+      </span>
+    </div>
+    <div class="agent-history" *ngIf="isHistoryOpen">
+      <div class="agent-history-head">
+        <span>Recent chats</span>
+        <button type="button" class="agent-history-close" aria-label="Close chat history" (click)="toggleHistory()">
+          <i class="fa fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      <button
+        type="button"
+        class="agent-history-item"
+        *ngFor="let item of chatHistory"
+        (click)="restoreConversation(item)"
+      >
+        <span class="agent-history-title">{{ getHistoryTitle(item) }}</span>
+        <span class="agent-history-date">{{ item.updatedAt | date:'dd MMM, HH:mm' }}</span>
+      </button>
+      <p class="agent-history-empty" *ngIf="!chatHistory.length">No saved chats yet.</p>
+    </div>
+    <p class="agent-request-pill" *ngIf="isPending">{{ inFlightStatusText }}</p>
+  </div>
+
+  <section class="agent-thread">
+    <div class="agent-messages" #messagesRef>
+      <article
+        *ngFor="let message of filteredMessages; trackBy: trackByMessage"
+        class="agent-msg"
+        [class.agent-msg-user]="message.role === 'user'"
+        [class.agent-msg-system]="message.role === 'system'"
+      >
+        <div class="agent-block-list">
+          <ng-container *ngFor="let block of message.blocks; let i = index; trackBy: trackByBlock">
+            <ng-container [ngSwitch]="block.type">
+              <p class="agent-text" *ngSwitchCase="'text'">{{ getBlockText(block) }}</p>
+              <pre class="agent-markdown" *ngSwitchCase="'markdown'">{{ getBlockMarkdown(block) }}</pre>
+              <p class="agent-status" *ngSwitchCase="'status'" [class.agent-status-loading]="block.level === 'loading'">
+                {{ getBlockText(block) }}
+              </p>
+
+              <dl class="agent-data" *ngSwitchCase="'data'">
+                <div class="agent-data-row" *ngFor="let item of getDataItems(block)">
+                  <dt>{{ item.key }}</dt>
+                  <dd>{{ item.value }}</dd>
+                </div>
+              </dl>
+
+              <ng-container *ngSwitchCase="'suggestions'">
+                <div class="agent-actions agent-actions-suggestions" *ngIf="!isSuggestionHidden(message)">
+                  <a
+                    *ngFor="let action of getSuggestionItems(block)"
+                    href="#"
+                    class="agent-action-link"
+                    (click)="$event.preventDefault(); runSuggestion(action)"
+                  >
+                    <i
+                      class="fa fa-arrow-right agent-action-link-icon"
+                      aria-hidden="true"
+                      *ngIf="showsDynamicSurfaceHint(action)"
+                    ></i>
+                    {{ action.label }}
+                  </a>
+                </div>
+              </ng-container>
+
+              <div class="agent-form" *ngSwitchCase="'form'">
+                <h4 *ngIf="block.title">{{ block.title }}</h4>
+                <div class="agent-form-fields" *ngIf="block.fields && block.fields.length">
+                  <div class="agent-form-field" *ngFor="let field of block.fields">
+                    <label [attr.for]="'field_' + message.id + '_' + field.id">{{ field.label }}</label>
+                    <input
+                      *ngIf="field.type === 'text'"
+                      [id]="'field_' + message.id + '_' + field.id"
+                      type="text"
+                      [disabled]="isPending || isFormSubmitted(message, i)"
+                      [ngModel]="getFormFieldValue(message, i, field.id)"
+                      (ngModelChange)="setFormFieldValue(message, i, field.id, $event)"
+                    />
+                    <input
+                      *ngIf="field.type === 'number'"
+                      [id]="'field_' + message.id + '_' + field.id"
+                      type="number"
+                      [disabled]="isPending || isFormSubmitted(message, i)"
+                      [ngModel]="getFormFieldValue(message, i, field.id)"
+                      (ngModelChange)="setFormFieldValue(message, i, field.id, $event)"
+                    />
+                    <select
+                      *ngIf="field.type === 'select'"
+                      [id]="'field_' + message.id + '_' + field.id"
+                      [disabled]="isPending || isFormSubmitted(message, i)"
+                      [ngModel]="getFormFieldValue(message, i, field.id)"
+                      (ngModelChange)="setFormFieldValue(message, i, field.id, $event)"
+                    >
+                      <option [ngValue]="''">Select...</option>
+                      <option *ngFor="let option of field.options || []" [ngValue]="option.value">{{ option.label }}</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="agent-action-btn"
+                  [disabled]="isPending || isFormSubmitted(message, i)"
+                  (click)="submitFormBlock(message, block, i)"
+                >
+                  {{ isFormSubmitted(message, i) ? 'Submitted' : 'Submit' }}
+                </button>
+              </div>
+
+              <div class="agent-confirmation" *ngSwitchCase="'confirmation'">
+                <p class="agent-text">{{ getBlockText(block) }}</p>
+                <div class="agent-actions">
+                  <button
+                    type="button"
+                    class="agent-action-btn"
+                    [disabled]="isPending || isConfirmationActed(message, i)"
+                    (click)="confirmBlockAction(message, block, i, true)"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    class="agent-action-btn"
+                    [disabled]="isPending || isConfirmationActed(message, i)"
+                    (click)="confirmBlockAction(message, block, i, false)"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="agent-link-btn"
+                *ngSwitchCase="'link'"
+                [disabled]="isPending || isLinkDisabled(block)"
+                (click)="onLinkClick(block)"
+              >
+                {{ getBlockLabel(block) }}
+              </button>
+
+              <div class="agent-error" *ngSwitchCase="'error'">
+                <p>{{ getBlockMessage(block) }}</p>
+                <small *ngIf="block.details">{{ block.details }}</small>
+              </div>
+
+              <div class="agent-error" *ngSwitchDefault>
+                <p>Unsupported response block received.</p>
+              </div>
+            </ng-container>
+          </ng-container>
+
+          <div class="agent-msg-meta">
+            <span>{{ message.timestamp | date:'HH:mm:ss' }}</span>
+            <span *ngIf="message.requestId">{{ message.requestId }}</span>
+            <span *ngIf="message.agent" class="agent-msg-agent">{{ message.agent.name || message.agent.id }}</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="agent-input-wrap">
+      <div class="agent-toolbar" *ngIf="isPending">
+        <button type="button" class="agent-toolbar-btn" (click)="cancelActiveRequest()">Cancel</button>
+      </div>
+      <div class="agent-input-row">
+        <textarea
+          #composerRef
+          class="agent-input"
+          rows="2"
+          placeholder="How can I help you today?"
+          [attr.maxlength]="charLimit"
+          [(ngModel)]="inputValue"
+          (keydown)="onComposerKeydown($event)"
+        ></textarea>
+        <button type="button" class="agent-send-btn" [disabled]="isSubmitDisabled()" (click)="send()">Send</button>
+      </div>
+      <p class="agent-char-meta">{{ inputValue.length }}/{{ charLimit }}</p>
+    </div>
+  </section>
+
+  <div class="agent-right-panel" *ngIf="rightPanelVisible" [style.width.px]="rightPanelComputedWidth" [style.height.px]="rightPanelComputedHeight" [ngStyle]="{ left: rightPanelLeft + 'px', top: rightPanelTop + 'px' }">
+    <div class="agent-right-panel-head">
+      <strong>{{ rightPanelTitle }}</strong>
+      <button type="button" class="agent-right-panel-close" (click)="closeRightPanel()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="agent-right-panel-body">
+      <ng-template #rightPanelContainer></ng-template>
+    </div>
+  </div>
+</aside>
