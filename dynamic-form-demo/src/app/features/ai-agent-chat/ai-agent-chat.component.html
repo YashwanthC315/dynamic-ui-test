@@ -1,0 +1,33 @@
+<div class="agent-shell">
+  <div class="chat-panel">
+    <div class="chat-header">AI Agent <span class="subtitle">— CT-Bot Assistant</span></div>
+
+    <div class="chat-messages">
+      <div
+        *ngFor="let m of messages"
+        class="chat-message"
+        [class.user]="m.from === 'user'"
+      >
+        {{ m.text }}
+      </div>
+      <div class="chat-message agent" *ngIf="sending">Thinking…</div>
+    </div>
+
+    <div class="chat-input-row">
+      <input
+        type="text"
+        [(ngModel)]="draft"
+        (keydown.enter)="send()"
+        placeholder="How can I help you today?"
+      />
+      <button (click)="send()" [disabled]="sending">Send</button>
+    </div>
+  </div>
+
+  <app-dynamic-form
+    *ngIf="activeFormSpec"
+    [spec]="activeFormSpec"
+    (formSubmit)="onFormSubmit($event)"
+    (formCancel)="onFormCancel()"
+  ></app-dynamic-form>
+</div>

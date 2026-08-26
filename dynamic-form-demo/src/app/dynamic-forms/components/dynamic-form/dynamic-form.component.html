@@ -1,0 +1,79 @@
+<div class="dynamic-form-panel" *ngIf="spec">
+  <div class="dynamic-form-header">
+    <h3>{{ spec.title }}</h3>
+    <button class="icon-btn" type="button" (click)="onCancel()">&times;</button>
+  </div>
+  <p class="dynamic-form-description" *ngIf="spec.description">{{ spec.description }}</p>
+
+  <form *ngIf="form" [formGroup]="form" (ngSubmit)="onSubmit()" class="dynamic-form">
+    <div class="field" *ngFor="let field of sortedFields" [ngSwitch]="field.type">
+
+      <label [for]="field.id">
+        {{ field.label | uppercase }}
+        <span class="required-mark" *ngIf="field.required">*</span>
+      </label>
+
+      <!-- text / number -->
+      <input
+        *ngSwitchCase="'text'"
+        [id]="field.id"
+        type="text"
+        [formControlName]="field.id"
+        [placeholder]="field.placeholder || ''"
+        [class.invalid]="isInvalid(field.id)"
+      />
+
+      <input
+        *ngSwitchCase="'number'"
+        [id]="field.id"
+        type="number"
+        [formControlName]="field.id"
+        [placeholder]="field.placeholder || ''"
+        [class.invalid]="isInvalid(field.id)"
+      />
+
+      <textarea
+        *ngSwitchCase="'textarea'"
+        [id]="field.id"
+        [formControlName]="field.id"
+        [placeholder]="field.placeholder || ''"
+        [class.invalid]="isInvalid(field.id)"
+      ></textarea>
+
+      <input
+        *ngSwitchCase="'date'"
+        [id]="field.id"
+        type="date"
+        [formControlName]="field.id"
+        [class.invalid]="isInvalid(field.id)"
+      />
+
+      <div *ngSwitchCase="'checkbox'" class="checkbox-row">
+        <input [id]="field.id" type="checkbox" [formControlName]="field.id" />
+      </div>
+
+      <!-- select: options resolved by OptionsResolverService, not by the agent -->
+      <select
+        *ngSwitchCase="'select'"
+        [id]="field.id"
+        [formControlName]="field.id"
+        [class.invalid]="isInvalid(field.id)"
+      >
+        <option [ngValue]="null" *ngIf="optionsLoadingByFieldId[field.id]">Loading...</option>
+        <option
+          *ngFor="let opt of optionsByFieldId[field.id]"
+          [ngValue]="opt.value"
+        >
+          {{ opt.label }}
+        </option>
+      </select>
+
+      <small class="help-text" *ngIf="field.helpText">{{ field.helpText }}</small>
+      <small class="error-text" *ngIf="isInvalid(field.id)">This field is required.</small>
+    </div>
+
+    <button type="submit" class="submit-btn" [disabled]="submitting">
+      {{ submitting ? 'Submitting…' : (spec.submitLabel || 'Submit') }}
+    </button>
+  </form>
+</div>

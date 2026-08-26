@@ -1,0 +1,21 @@
+<div class="app-shell">
+  <div class="topbar">CampusTrack (Dynamic Form Demo)</div>
+
+  <div class="body">
+    <app-ai-agent-chat (organizationCreated)="onOrganizationCreated($event)"></app-ai-agent-chat>
+
+    <div class="main-area">
+      <div class="card">
+        <h3>Organizations created via mocked API</h3>
+        <p class="hint" *ngIf="createdOrganizations.length === 0">
+          Type "add organization" in the chat, fill the form, and submit.
+        </p>
+        <ul>
+          <li *ngFor="let org of createdOrganizations">
+            <strong>{{ org.name }}</strong> ({{ org.shortName }}) — id: {{ org.id }}
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
