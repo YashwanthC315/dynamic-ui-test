@@ -10,6 +10,7 @@
   },
   "private": true,
   "dependencies": {
+    "@acp/chat-panel": "file:acp-chat-panel-0.1.1.tgz",
     "@angular/animations": "^22.0.0",
     "@angular/common": "^22.0.0",
     "@angular/compiler": "^22.0.0",

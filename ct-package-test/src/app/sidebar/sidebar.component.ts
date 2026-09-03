@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, EventEmitter, Output, signal } from '@angular/core';
 
 interface SidebarItem {
   code: string;
@@ -34,5 +34,11 @@ export class SidebarComponent {
 
   protected select(code: string): void {
     this.activeCode.set(code);
+  }
+
+  @Output() toggleChat = new EventEmitter<void>();
+
+  protected onToggleChat(): void {
+    this.toggleChat.emit();
   }
 }

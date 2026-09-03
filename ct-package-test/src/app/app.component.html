@@ -14,10 +14,29 @@
   </header>
 
   <div class="app-body">
-    <app-sidebar />
-    <main class="content">
-      <app-dashboard />
-    </main>
+    <app-sidebar (toggleChat)="chatOpen = !chatOpen" />
+
+    <div class="acp-workspace">
+      <div class="acp-workspace__chat" *ngIf="chatOpen">
+        <acp-chat-panel
+          dock="left"
+          [open]="chatOpen"
+          [width]="chatWidth"
+          [min-width]="280"
+          [max-width]="640"
+          [messages]="chatMessages"
+          (acp-open-change)="chatOpen = $any($event).detail"
+          (acp-width-change)="chatWidth = $any($event).detail"
+          (acp-message-sent)="onChatMessage($any($event).detail)"
+          (acp-new-chat)="onNewChat()"
+          (acp-help)="onChatHelp()"
+        ></acp-chat-panel>
+      </div>
+
+      <main class="acp-workspace__content">
+        <app-dashboard />
+      </main>
+    </div>
   </div>
 
   <footer class="footer">

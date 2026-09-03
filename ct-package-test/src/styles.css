@@ -1,3 +1,14 @@
+@import '@acp/chat-panel/styles.css';
+@import '@acp/chat-panel/theme.css';
+
+/* Enforce right-edge resize handle when chat panel is placed between sidebar and content. */
+acp-chat-panel[dock='left'] .acp-resize-handle,
+acp-chat-panel[dock='left'] .acp-resize-handle--right {
+  inset: 0 0 0 auto !important;
+  left: auto !important;
+  right: 0 !important;
+}
+
 * {
   box-sizing: border-box;
 }
