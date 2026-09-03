@@ -1,0 +1,12 @@
+<aside class="sidebar">
+  @for (item of items; track item.code) {
+    <div
+      class="sidebar-icon"
+      [class.active]="item.code === activeCode()"
+      [title]="item.label"
+      (click)="select(item.code)"
+    >
+      {{ item.code }}
+    </div>
+  }
+</aside>
