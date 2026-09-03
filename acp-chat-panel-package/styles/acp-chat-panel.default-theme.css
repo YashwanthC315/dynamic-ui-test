@@ -1,0 +1,171 @@
+/*
+ * ACP Chat Panel theme for the supplied CampusTrack reference.
+ * The package intentionally exposes stable ACP class names so an integrating
+ * application can replace these values without modifying the component.
+ */
+
+/* acp-panel */
+.acp-panel {
+  background: #f5f7fb;
+  border-left: 1px solid #d8dfeb;
+  color: #183b70;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+}
+
+/* acp-header */
+.acp-header {
+  min-height: 32px;
+  padding: 0 7px;
+  background: #ffffff;
+  border-top: 4px solid #173b70;
+  border-bottom: 1px solid #d8dfeb;
+}
+
+/* acp-header__title */
+.acp-header__title {
+  color: #173b70;
+  font-size: 12px;
+}
+
+/* acp-header__actions */
+.acp-header__actions {
+  gap: 3px;
+}
+
+/* acp-icon-button */
+.acp-icon-button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid #b8c8df;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #173b70;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+/* acp-messages */
+.acp-messages {
+  padding: 7px 8px;
+  background: #f5f7fb;
+}
+
+/* acp-message */
+.acp-message {
+  margin: 0 0 7px;
+}
+
+/* acp-message__bubble */
+.acp-message__bubble {
+  padding: 7px 8px;
+  border: 1px solid #cbd7e7;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #173b70;
+  line-height: 1.3;
+}
+
+/* acp-message--user */
+.acp-message--user .acp-message__bubble {
+  background: #eaf0fa;
+}
+
+/* acp-message__time */
+.acp-message__time {
+  margin: 2px 3px 0;
+  color: #7888a0;
+  font-size: 8px;
+}
+
+/* acp-empty-state */
+.acp-empty-state {
+  color: #6d7f99;
+}
+
+/* acp-composer */
+.acp-composer {
+  padding: 6px 7px 3px;
+  background: #ffffff;
+  border-top: 1px solid #d8dfeb;
+}
+
+/* acp-input */
+.acp-input {
+  min-height: 38px;
+  padding: 7px;
+  border: 1px solid #b8c8df;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #173b70;
+  font: inherit;
+  outline: none;
+}
+
+.acp-input:focus {
+  border-color: #3c64c7;
+  box-shadow: 0 0 0 1px #3c64c7;
+}
+
+/* acp-composer__bottom */
+.acp-composer__bottom {
+  min-height: 22px;
+}
+
+/* acp-counter */
+.acp-counter {
+  color: #7888a0;
+  font-size: 8px;
+}
+
+/* acp-send */
+.acp-send {
+  min-width: 35px;
+  min-height: 23px;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: #173b70;
+  color: #ffffff;
+  font-size: 10px;
+}
+
+.acp-send:disabled {
+  opacity: 0.55;
+}
+
+/* acp-resize-handle */
+.acp-resize-handle {
+  width: 5px;
+  background: transparent;
+}
+
+.acp-resize-handle:hover,
+.acp-resize-handle:focus {
+  background: #b8c8df;
+}
+
+/* Optional application shell classes used by the integration guide. */
+.acp-workspace {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.acp-workspace__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.acp-workspace__chat {
+  flex: 0 0 auto;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@acp/chat-panel",
+  "version": "0.1.1",
+  "description": "Embeddable, non-overlay AI chat panel for Angular 22 applications.",
+  "type": "module",
+  "main": "./dist/acp-chat-panel.js",
+  "module": "./dist/acp-chat-panel.js",
+  "types": "./dist/acp-chat-panel.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/acp-chat-panel.d.ts",
+      "import": "./dist/acp-chat-panel.js"
+    },
+    "./styles.css": "./styles/acp-chat-panel.css",
+    "./theme.css": "./styles/acp-chat-panel.theme.css"
+  },
+  "files": [
+    "dist",
+    "styles",
+    "README.md",
+    "AGENT_GUIDE.md",
+    "docs"
+  ],
+  "sideEffects": [
+    "./dist/acp-chat-panel.js",
+    "./styles/acp-chat-panel.css"
+  ],
+  "keywords": [
+    "angular",
+    "angular-22",
+    "chat",
+    "ai",
+    "panel",
+    "sidebar",
+    "web-component"
+  ],
+  "license": "UNLICENSED"
+}
