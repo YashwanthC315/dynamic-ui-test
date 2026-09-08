@@ -2,7 +2,7 @@
 
 ## Goal
 
-Integrate the installed `@acp/chat-panel` package into the existing Angular 22 application so the existing sidebar contains a chat launch button and the chat panel opens **beside** the application's routed content.
+Integrate the installed `@acp/chat-panel` package into the existing Angular 22 application so the existing sidebar contains a chat launch button and the chat panel opens **beside** the application's routed content — docked immediately next to the sidebar, with the routed content filling the remaining space to its right.
 
 The chat is a workspace panel, not an overlay.
 
@@ -10,8 +10,8 @@ The chat is a workspace panel, not an overlay.
 
 1. Do not create an `NgModule` solely for this integration. Use the standalone component.
 2. Do not use `position: fixed`, `position: absolute`, `z-index` layering, CDK Overlay, Material Drawer overlay mode, or a floating dialog for the chat.
-3. The chat and the routed application content must be siblings in the same horizontal layout container.
-4. Resizing the chat must resize the available content area. The dashboard/home/other route must move, reflow, or become narrower rather than being covered by the chat.
+3. The chat and the routed application content must be siblings in the same horizontal layout container, with the chat panel positioned directly after the sidebar and before the routed content — not after it.
+4. Resizing the chat must resize the *available width* of the content container. It must not visibly reflow, rearrange, or resize the internal layout of the routed dashboard/home page itself (no grid re-columning, no card resizing, no re-wrapping). The routed page keeps its own layout; if that layout is wider than the space available, the content container scrolls horizontally rather than the page's internal grid recomputing.
 5. Preserve the host application's existing sidebar, header, router outlet, routing, and page behavior. Make the smallest integration change possible.
 6. Do not rewrite the package component's CSS to match the host app. Apply the host theme through the `acp-*` classes in a global theme stylesheet.
 7. Do not hard-code application-specific colors, typography, or spacing into the package usage markup.
@@ -83,14 +83,10 @@ The button is the launch control. Do not create a second floating launcher elsew
 
 ## 5. Create the non-overlay workspace
 
-The existing routed content and chat must be siblings:
+The chat panel sits **immediately next to the sidebar**, as the first child of the workspace container. The routed content is the sibling that follows it and fills the remaining space:
 
 ```html
 <div class="acp-workspace">
-  <main class="acp-workspace__content">
-    <router-outlet />
-  </main>
-
   @if (chatOpen) {
     <div class="acp-workspace__chat">
       <acp-chat-panel
@@ -108,8 +104,14 @@ The existing routed content and chat must be siblings:
       />
     </div>
   }
+
+  <main class="acp-workspace__content">
+    <router-outlet />
+  </main>
 </div>
 ```
+
+This ordering matters: the chat panel must come **before** `.acp-workspace__content` in DOM order so it renders directly against the sidebar, with the routed page occupying the remaining horizontal space to the right of it. Do not append the chat panel after the content.
 
 Adapt the markup to the actual shell. Do not blindly duplicate the example if the application already has a workspace wrapper.
 
@@ -125,17 +127,17 @@ Required layout properties:
   overflow: hidden;
 }
 
+.acp-workspace__chat {
+  flex: 0 0 auto;
+  height: 100%;
+  min-width: 0;
+}
+
 .acp-workspace__content {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   overflow: auto;
-}
-
-.acp-workspace__chat {
-  flex: 0 0 auto;
-  height: 100%;
-  min-width: 0;
 }
 ```
 
@@ -146,15 +148,17 @@ If the application already has an equivalent flex/grid workspace, reuse it inste
 The important behavior is:
 
 ```text
-┌───────────────────────────────────────────────┬──────────────┐
-│ existing application content                  │ AI Agent     │
-│ dashboard / home / routed page                │ chat         │
-│                                               │              │
-│                                               │              │
-└───────────────────────────────────────────────┴──────────────┘
-                         ↑
-                  content gets narrower
-                  when chat gets wider
+┌──────────────┬───────────────────────────────────────────────┐
+│ AI Agent     │ existing application content                  │
+│ chat         │ dashboard / home / routed page                │
+│              │                                                │
+│              │                                                │
+└──────────────┴───────────────────────────────────────────────┘
+        ↑
+  chat sits directly against the sidebar;
+  content fills the remaining space and
+  simply gets a narrower or wider viewport —
+  its own internal layout does not reflow
 ```
 
 Do not produce this behavior:
@@ -163,26 +167,37 @@ Do not produce this behavior:
 ┌───────────────────────────────────────────────────────────────┐
 │ dashboard content                               ┌────────────┐│
 │                                                │ AI Agent   ││
-│                                                │ overlay    ││
+│                                                │ overlay/   ││
+│                                                │ right dock ││
 └────────────────────────────────────────────────┴────────────┘│
 ```
 
-The second pattern is explicitly prohibited.
+Rendering the chat to the right of the routed content (or as an overlay on top of it) is explicitly prohibited — the chat must dock directly next to the sidebar, on the left of the content area.
+
+Also avoid this, where resizing forces the dashboard's own grid to visibly re-layout:
+
+```text
+Panel widened →  [chat: wider] [dashboard: cards re-wrap/shrink/reflow]  ✗
+Panel widened →  [chat: wider] [dashboard: same layout, less viewport]  ✓
+```
+
+The routed page's internal content (card sizes, grid columns, etc.) should stay visually stable across a resize. Only the amount of viewport available to it changes.
 
 ## 7. Resizing
 
 The package already provides the resize handle and emits `acp-width-change`.
 
-If the panel is rendered between the sidebar and the routed content, set `dock="left"` so the resize handle appears on the right edge next to the routed content.
+Set `dock="left"` on `acp-chat-panel` so the resize handle appears on the panel's right edge, adjacent to the routed content.
 
 The integration must:
 
-- keep the chat as a flex item;
+- keep the chat as a flex item, positioned before `.acp-workspace__content`;
 - bind the current width to `[width]`;
 - update shell state from `(acp-width-change)`;
 - keep sensible bounds, normally 260–640 px;
-- ensure the page content has `min-width: 0` so flexbox can actually shrink it;
-- verify that the application does not have a parent `min-width` or fixed width that prevents the content column from shrinking.
+- give `.acp-workspace__content` `min-width: 0` so flexbox can shrink its container, and `overflow: auto` so its own content can scroll horizontally instead of being forced to reflow;
+- verify that the application does not have a parent `min-width` or fixed width that prevents the content column from shrinking;
+- avoid triggering any responsive/container-query logic in the routed page that would cause it to re-layout in response to the container width change — the content should scroll rather than rearrange.
 
 Do not implement a second resize handler in the application unless the package behavior is demonstrably incompatible with the host shell.
 
@@ -232,13 +247,14 @@ Do not introduce a second unrelated token system.
 
 The supplied reference shows:
 
+- the chat panel docked directly against the sidebar, with the routed dashboard content to its right;
 - a compact white AI Agent header;
 - small square header action buttons;
 - a very light blue/gray message surface;
 - compact bordered message bubbles;
 - a bottom composer separated by a border;
 - a textarea with a Send button and character counter;
-- a narrow vertical resize affordance on the edge adjacent to routed content (right edge when `dock="left"`).
+- a narrow vertical resize affordance on the edge adjacent to routed content (right edge of the panel, since `dock="left"`).
 
 Use the existing application design tokens to reproduce that visual hierarchy rather than copying the application's entire dashboard stylesheet into the package.
 
@@ -259,10 +275,12 @@ To avoid the exact build errors seen earlier:
 - In strict Angular templates, read event payload as `$any($event).detail`.
 - Define ACP theme selectors in global styles (for example `src/styles.css`), not component-scoped styles.
 
-To avoid the runtime issues seen later:
+To avoid the runtime/layout issues seen later:
 
 - The host must own chat messages and bind them via `[messages]`; do not only log `(acp-message-sent)`.
 - Do not re-render the full custom element on every textarea `input` event inside the package runtime; update draft/counter/send state without replacing the textarea node, otherwise the caret jumps to the start and typing appears reversed.
+- Do not place `.acp-workspace__chat` after `.acp-workspace__content` in the DOM — this causes the chat to render on the right of the dashboard instead of next to the sidebar.
+- Do not let the routed page's own CSS respond to the shrinking container (e.g. container queries, JS-measured breakpoints) in a way that re-flows its grid on resize — this produces visible dashboard reflow, which is prohibited. Let the content scroll instead.
 
 The host owns the message array and passes it to `[messages]`.
 
@@ -275,10 +293,10 @@ Before finishing, verify all of the following:
 - [ ] The panel is at the shell/workspace level, not inside the dashboard page.
 - [ ] The panel is not an overlay.
 - [ ] No fixed/absolute positioning is used to create the chat.
-- [ ] The routed page and chat are siblings in the same horizontal layout.
-- [ ] Increasing chat width makes the routed page narrower.
-- [ ] Decreasing chat width gives the routed page more space.
-- [ ] The dashboard/home/other route visibly moves/reflows as the chat is resized.
+- [ ] The chat panel renders directly adjacent to the sidebar, with the routed content to its right (not the chat appearing to the right of the content).
+- [ ] The routed page and chat are siblings in the same horizontal layout, with the chat first in DOM order.
+- [ ] Increasing chat width narrows the content container's available space; decreasing it widens that space.
+- [ ] The dashboard/home page's own internal layout (grid columns, card sizing) stays visually unchanged as the chat is resized — no reflow, rearranging, or resizing of its content. The content area scrolls if it doesn't fit.
 - [ ] The resize handle works with pointer dragging.
 - [ ] Keyboard arrow resizing works when the handle is focused.
 - [ ] The panel remains usable at its minimum width.
@@ -298,5 +316,7 @@ Do not:
 - implement authentication;
 - replace the existing sidebar;
 - create an overlay/drawer/modal chat;
+- render the chat panel to the right of the routed content instead of next to the sidebar;
+- make the routed dashboard/home page reflow its own internal layout in response to chat resizing;
 - modify routed dashboard/home components just to make the panel fit;
 - hard-code a brand theme into application components outside the ACP theme selectors.
