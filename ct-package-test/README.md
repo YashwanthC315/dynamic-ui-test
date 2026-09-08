@@ -34,7 +34,7 @@ npm install
 npm start
 ```
 
-Then open http://localhost:4200.
+Then open http://localhost:4300.
 
 ## Trying out a package install
 
