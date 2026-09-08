@@ -38,16 +38,20 @@ Then open http://localhost:4300.
 
 ## Trying out a package install
 
-```bash
-npm install lodash-es
-```
-
-```ts
-import { debounce } from 'lodash-es';
-```
-
 Because everything here is a standalone component with no shared module, adding a new
 library only ever means importing it where you use it — no module wiring required.
+
+To try the local chat-panel package (packaged from the sibling repo), for example:
+
+```bash
+npm install ./acp-chat-panel-0.1.1.tgz
+```
+
+Then register the custom element at app bootstrap:
+
+```ts
+import '@acp/chat-panel';
+```
 
 ## Project structure
 
@@ -68,3 +72,6 @@ src/
 No routing, HTTP calls, or state management are wired up — it's just the static interface
 from the reference screenshot, with plain component-scoped CSS (no UI library) so a
 freshly-installed package won't collide with anything already in use.
+
+Note: the workspace is prepared to integrate `@acp/chat-panel` as a sibling layout
+surface (chat beside routed content). See the package README for integration steps.
