@@ -25,9 +25,7 @@ npm install ./acp-chat-panel-0.1.1.tgz
 
 ## Launch button
 
-The package does not own the host application's sidebar. Add one chat action to the existing sidebar and toggle `chatOpen` from that control. Do not create a second floating launch button.
-
-Do not modify the package JavaScript just to apply application branding.
+Appears in the sidebar and clicking it opens the chat panel
 
 ## Agent guide
 
