@@ -25,6 +25,22 @@ The package owns structure and interaction. The host application owns the final 
 | `.acp-counter` | Character counter |
 | `.acp-send` | Send action |
 | `.acp-resize-handle` | Resize affordance |
+| `.acp-container` | Dynamic container surface |
+| `.acp-container-header` | Dynamic container header |
+| `.acp-container-header__title` | Dynamic container title typography |
+| `.acp-container-body` | Dynamic container scroll/body surface |
+| `.acp-form-shell` | Form wrapper in container |
+| `.acp-form` | Dynamic form root |
+| `.acp-form-title` | Form title typography |
+| `.acp-form-description` | Form subtitle/description |
+| `.acp-form-field` | Field row layout |
+| `.acp-form-label` | Field label typography |
+| `.acp-form-control` | Input/select/textarea controls |
+| `.acp-form-error` | Validation or submit error text |
+| `.acp-form-actions` | Footer actions layout |
+| `.acp-button` | Container/form button baseline style |
+| `.acp-form-resize-handle` | Inner form resize affordance |
+| `.acp-container-empty` | Empty state when no form is open |
 
 ## Design-token principle
 

@@ -300,3 +300,100 @@ Do not:
 - create an overlay/drawer/modal chat;
 - modify routed dashboard/home components just to make the panel fit;
 - hard-code a brand theme into application components outside the ACP theme selectors.
+
+## Dynamic container addendum
+
+This package now also ships `<acp-dynamic-container>` in the same runtime bundle.
+
+### Purpose
+
+- Keep chat and dynamic container as sibling workspace surfaces.
+- Open a form surface from chat text commands.
+- Keep host application business logic (options, submission handlers, APIs) outside package internals.
+
+### Chat -> form trigger
+
+`<acp-chat-panel>` emits `acp-form-requested` when a sent message starts with the configured trigger prefix.
+
+Default prefix: `/form`
+
+Supported examples:
+
+- `/form create student`
+- `/form create enroll student form` (recommended test command)
+- `/form:create student`
+- `/form {"formId":"create-student","title":"Create Student","fields":[{"id":"name","label":"Name","type":"text","required":true}]}`
+
+Recommended student-enrollment test command details:
+
+- command: `/form create enroll student form`
+- generated fields: Name, Date Of Birth, Gender, Course, Email (EXTRA), Mobile (EXTRA), Father Name (EXTRA)
+
+Event payload shape:
+
+```ts
+{
+  formSpec: {
+    formId: string;
+    title: string;
+    fields: Array<{
+      id: string;
+      label: string;
+      type: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'textarea';
+      required?: boolean;
+      disabled?: boolean;
+      placeholder?: string;
+      optionsSource?: string;
+      options?: Array<{ label: string; value: string }>;
+      validation?: { min?: number; max?: number; maxLength?: number };
+    }>;
+  }
+}
+```
+
+### Dynamic container API
+
+Inputs/properties:
+
+- `open`
+- `title`
+- `formWidth` / `form-width`
+- `minFormWidth` / `min-form-width`
+- `maxFormWidth` / `max-form-width`
+- `formSpec`
+
+Events:
+
+- `acp-open-change`
+- `acp-form-width-change`
+- `acp-submitted` (`{ formId, values }`)
+- `acp-cancelled`
+
+### Recommended workspace composition
+
+Use one flex workspace split:
+
+- left: chat (`acp-workspace__chat`)
+- right: dynamic container when open, otherwise host routed content
+
+Do not render dynamic container as an overlay. It must live in the same layout flow as chat/content.
+
+### Wiring options
+
+- Option A: Explicit host wiring.
+  - Listen to `(acp-form-requested)` on chat and set container state (`open`, `formSpec`) in host shell component.
+- Option B: Package auto-listener.
+  - `acp-dynamic-container` auto-listens for bubbled `acp-form-requested` on its shared parent (or `document`) and opens itself when a valid `formSpec` is received.
+
+### Validation and supported field types
+
+Supported types are fixed and deterministic:
+
+- `text`
+- `number`
+- `date`
+- `checkbox`
+- `select`
+- `textarea`
+
+Unsupported/unknown field types are normalized by the package runtime to safe defaults.

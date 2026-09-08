@@ -178,3 +178,122 @@ acp-chat-panel[dock='left'] .acp-resize-handle {
   min-width: 0;
   min-height: 0;
 }
+
+.acp-workspace__container {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* acp-container */
+.acp-container {
+  background: #f7f9fd;
+  border-left: 1px solid #d8dfeb;
+  color: #173b70;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+}
+
+/* acp-container-header */
+.acp-container-header {
+  min-height: 36px;
+  padding: 0 10px;
+  background: #ffffff;
+  border-bottom: 1px solid #d8dfeb;
+}
+
+.acp-container-header__title {
+  color: #173b70;
+  font-size: 12px;
+}
+
+.acp-container-body {
+  padding: 14px;
+  background: #f7f9fd;
+}
+
+.acp-form-shell {
+  max-width: 100%;
+  padding-right: 8px;
+}
+
+.acp-form {
+  padding: 12px;
+  border: 1px solid #d4dced;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.acp-form-title {
+  margin: 0;
+  color: #173b70;
+  font-size: 14px;
+}
+
+.acp-form-description {
+  margin: 0;
+  color: #6d7f99;
+  font-size: 11px;
+}
+
+.acp-form-label {
+  color: #173b70;
+  font-size: 11px;
+}
+
+.acp-form-control {
+  min-height: 34px;
+  padding: 6px 7px;
+  border: 1px solid #b8c8df;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #173b70;
+  font: inherit;
+}
+
+textarea.acp-form-control {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.acp-form-control:focus {
+  border-color: #3c64c7;
+  box-shadow: 0 0 0 1px #3c64c7;
+  outline: none;
+}
+
+.acp-form-actions {
+  margin-top: 6px;
+}
+
+.acp-button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid #b8c8df;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #173b70;
+  font-size: 11px;
+}
+
+.acp-button--primary {
+  border-color: #173b70;
+  background: #173b70;
+  color: #ffffff;
+}
+
+.acp-form-resize-handle {
+  width: 5px;
+  background: linear-gradient(270deg, rgba(184, 200, 223, 0.6), rgba(184, 200, 223, 0));
+}
+
+.acp-form-resize-handle:hover,
+.acp-form-resize-handle:focus {
+  background: #b8c8df;
+}
+
+.acp-container-empty {
+  color: #6d7f99;
+}
