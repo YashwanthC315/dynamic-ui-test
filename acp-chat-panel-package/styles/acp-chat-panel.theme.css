@@ -297,3 +297,17 @@ textarea.acp-form-control {
 .acp-container-empty {
   color: #6d7f99;
 }
+
+/* small close icon in container header */
+.acp-icon-button[data-action="close"] {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px;
+  cursor: pointer;
+  color: #173b70;
+}
+.acp-icon-button[data-action="close"]:hover {
+  background: rgba(0,0,0,0.04);
+}

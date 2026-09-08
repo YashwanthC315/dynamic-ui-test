@@ -389,21 +389,33 @@ Events:
 - `acp-submitted` (`{ formId, values }`)
 - `acp-cancelled`
 
+Note: The dynamic container exposes a small top-right close control that closes the container, and each form also includes a secondary button whose label defaults to `Close` (host can override via `cancelLabel`).
+
 ### Recommended workspace composition
 
 Use one flex workspace split:
 
 - left: chat (`acp-workspace__chat`)
-- right: dynamic container when open, otherwise host routed content
+- right: host routed content by default; when forms are requested, render one or more dynamic containers in that region
 
 Do not render dynamic container as an overlay. It must live in the same layout flow as chat/content.
+
+For the current expected host behavior, multiple `/form ...` requests should open multiple forms at the same time. The host should keep a collection of open form instances and render one `<acp-dynamic-container>` per form so each form can be closed independently without replacing the others.
 
 ### Wiring options
 
 - Option A: Explicit host wiring.
-  - Listen to `(acp-form-requested)` on chat and set container state (`open`, `formSpec`) in host shell component.
+  - Listen to `(acp-form-requested)` on chat and push a new form entry into host shell state rather than replacing the previous one.
+  - Render dynamic containers with host iteration (`*ngFor` or equivalent) so multiple forms can remain open side-by-side.
+  - Wire `(acp-cancelled)` and `(acp-open-change)` per instance so each form closes independently.
 - Option B: Package auto-listener.
   - `acp-dynamic-container` auto-listens for bubbled `acp-form-requested` on its shared parent (or `document`) and opens itself when a valid `formSpec` is received.
+
+Option A is the recommended integration path for the tested host state because the host owns the collection of open forms and their independent close behavior.
+
+### Local run configuration
+
+For the tested reference host state, configure the Angular start script to run on port `4300` instead of the CLI default `4200`.
 
 ### Validation and supported field types
 

@@ -28,14 +28,33 @@
           (acp-open-change)="chatOpen = $any($event).detail"
           (acp-width-change)="chatWidth = $any($event).detail"
           (acp-message-sent)="onChatMessage($any($event).detail)"
+          (acp-form-requested)="onFormRequested($any($event).detail)"
           (acp-new-chat)="onNewChat()"
           (acp-help)="onChatHelp()"
         ></acp-chat-panel>
       </div>
 
-      <main class="acp-workspace__content">
-        <app-dashboard />
-      </main>
+      <div class="acp-workspace__container">
+        <ng-container *ngIf="dynamicForms.length; else hostContent">
+          <div class="acp-dynamic-forms" style="display:flex; gap:12px; align-items:flex-start;">
+            <acp-dynamic-container
+              *ngFor="let form of dynamicForms"
+              [open]="form.open"
+              [formSpec]="form.spec"
+              [attr.form-width]="form.width"
+              (acp-open-change)="onFormOpenChange(form.id, $any($event).detail)"
+              (acp-submitted)="onDynamicSubmit($any($event).detail)"
+              (acp-cancelled)="closeFormById(form.id)"
+            ></acp-dynamic-container>
+          </div>
+        </ng-container>
+      </div>
+
+      <ng-template #hostContent>
+        <main class="acp-workspace__content">
+          <app-dashboard />
+        </main>
+      </ng-template>
     </div>
   </div>
 
