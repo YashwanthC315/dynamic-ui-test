@@ -6,7 +6,7 @@ The component is designed to live **inside the application's layout**, beside ro
 
 ## Install
 
-After making the supplied folder into an npm tarball:
+Copy the package into the target app folder and install it
 
 ```bash
 npm install ./acp-chat-panel-0.1.1.tgz
