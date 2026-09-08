@@ -9,7 +9,7 @@ The component is designed to live **inside the application's layout**, beside ro
 After making the supplied folder into an npm tarball:
 
 ```bash
-npm install ./acp-chat-panel-0.1.0.tgz
+npm install ./acp-chat-panel-0.1.1.tgz
 ```
 
 ## Angular 22 integration
