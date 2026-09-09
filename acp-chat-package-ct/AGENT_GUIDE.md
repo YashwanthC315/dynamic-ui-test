@@ -19,6 +19,7 @@ The chat is a workspace panel, not an overlay.
 7. Do not hard-code application-specific colors, typography, or spacing into the package usage markup.
 8. The workspace region under the shell header/footer must resolve to one stable horizontal row: sidebar | chat column | main stage. Do not place the chat inside a routed page component or inside a card/grid owned by the dashboard.
 9. The dynamic container must open from the left edge of the main stage, directly adjacent to the chat column. It may visually cover the routed page inside that stage, but it must not appear as a viewport-right drawer separated from the chat.
+10. Open dynamic forms as resizable workspace surfaces. Bind their current width from shell state and update that state from the package resize event.
 
 ## Critical layout outcome
 
@@ -90,6 +91,17 @@ Keep these values in the shell, not in individual routed pages.
 The integration may persist `chatWidth` if the application already has an appropriate preference/state mechanism. Do not add a new backend persistence mechanism just for panel width.
 
 If the host supports multiple simultaneous forms, `openForms` should be a collection of form instances kept in shell state. Do not keep only one routed-page-local form reference.
+
+Each form instance should carry its own width state so resizing one form does not reset or resize other open forms. A typical shell-owned form item looks like:
+
+```ts
+{
+  id: string;
+  title: string;
+  formSpec: unknown;
+  formWidth: number;
+}
+```
 
 ## 4. Add the launch button to the existing sidebar
 
@@ -182,6 +194,7 @@ This ordering matters:
 - the chat column must come before the stage in DOM order;
 - the form layer must live inside the stage, not as a sibling after the stage;
 - the form surface must start at the stage's left edge so it appears immediately next to the chat column.
+- each dynamic container must bind its own width and listen to `acp-form-width-change` so the resize handle actually works.
 
 Do not append the chat after the content. Do not mount the dynamic container at the far right edge of the shell.
 
@@ -254,6 +267,7 @@ Required layout properties:
 .acp-workspace__form {
   flex: 0 0 auto;
   height: 100%;
+  min-height: 0;
   pointer-events: auto;
 }
 ```
@@ -262,6 +276,7 @@ The critical constraints are:
 
 - every shell ancestor above `.acp-workspace` must allow height propagation with `min-height: 0` where needed;
 - the chat host and `acp-chat-panel` element must both stretch to full height;
+- each dynamic container must receive a width input such as `formWidth` plus sensible bounds such as `320` to `720`;
 - the form layer is allowed to visually sit above the routed page, but only inside `.acp-workspace__stage`.
 
 If the application already has an equivalent flex/grid workspace, reuse it instead of adding a duplicate wrapper.
@@ -300,6 +315,8 @@ sidebar | chat | dashboard ................................ | form drawer
 
 The dynamic form surface must begin immediately after the chat column, not at the far right edge of the stage.
 
+The dynamic form surface must also remain resizable after it opens. Do not hard-code a fixed form width and do not ignore `acp-form-width-change`.
+
 Also avoid this, where resizing forces the dashboard's own grid to visibly re-layout:
 
 ```text
@@ -327,6 +344,8 @@ The integration must:
 - avoid triggering any responsive/container-query logic in the routed page that would cause it to re-layout in response to the container width change — the content should scroll rather than rearrange.
 
 Do not implement a second resize handler in the application unless the package behavior is demonstrably incompatible with the host shell.
+
+For dynamic forms, apply the same rule: rely on the package resize handle and `acp-form-width-change` event. Do not create a second custom resize system in the host.
 
 ## 8. Theme integration
 
@@ -384,6 +403,7 @@ The supplied reference shows:
 - a textarea with a Send button and character counter;
 - a narrow vertical resize affordance on the edge adjacent to routed content (right edge of the panel, since `dock="left"`).
 - when a form is opened, the form surface begins immediately next to the chat and visually sits over the dashboard/home stage instead of appearing as a detached panel at the far right side of the viewport.
+- opened forms remain resizable and preserve their individual widths while open.
 
 Use the existing application design tokens to reproduce that visual hierarchy rather than copying the application's entire dashboard stylesheet into the package.
 
@@ -411,6 +431,7 @@ To avoid the runtime/layout issues seen later:
 - Do not place `.acp-workspace__chat` after `.acp-workspace__content` in the DOM — this causes the chat to render on the right of the dashboard instead of next to the sidebar.
 - Do not place the chat inside the routed dashboard/home component — this typically causes the panel to lose full-height behavior and render like a shorter embedded box.
 - Do not mount `acp-dynamic-container` as a shell-right drawer. Mount it inside `.acp-workspace__stage` and align it to the stage's left edge so it opens immediately next to the chat.
+- Do not ignore `(acp-form-width-change)` or recreate the form instance on every resize event. Update only that form's width in shell state.
 - Do not let the routed page's own CSS respond to the shrinking container (e.g. container queries, JS-measured breakpoints) in a way that re-flows its grid on resize — this produces visible dashboard reflow, which is prohibited. Let the content scroll instead.
 
 The host owns the message array and passes it to `[messages]`.
@@ -429,10 +450,13 @@ Before finishing, verify all of the following:
 - [ ] The routed page and chat are siblings in the same horizontal layout, with the chat first in DOM order.
 - [ ] Any dynamic form surface opens immediately to the right of the chat, from the left edge of the stage.
 - [ ] Any dynamic form surface is visually above the routed page only within the stage area, not as a viewport-right drawer detached from the chat.
+- [ ] Dynamic forms are resizable with the package resize handle.
+- [ ] Resizing one dynamic form updates only that form's width state.
 - [ ] Increasing chat width narrows the content container's available space; decreasing it widens that space.
 - [ ] The dashboard/home page's own internal layout (grid columns, card sizing) stays visually unchanged as the chat is resized — no reflow, rearranging, or resizing of its content. The content area scrolls if it doesn't fit.
 - [ ] The resize handle works with pointer dragging.
 - [ ] Keyboard arrow resizing works when the handle is focused.
+- [ ] Dynamic form resize remains usable at minimum and maximum widths.
 - [ ] The panel remains usable at its minimum width.
 - [ ] The panel remains usable at its maximum width.
 - [ ] Route changes do not destroy the shell-level chat state unexpectedly.
@@ -452,6 +476,7 @@ Do not:
 - create an overlay/drawer/modal chat;
 - render the chat panel to the right of the routed content instead of next to the sidebar;
 - render the dynamic container as a detached drawer at the far right edge of the viewport;
+- hard-code dynamic form width without wiring `formWidth` and `acp-form-width-change`;
 - make the routed dashboard/home page reflow its own internal layout in response to chat resizing;
 - modify routed dashboard/home components just to make the panel fit;
 - hard-code a brand theme into application components outside the ACP theme selectors.
@@ -536,6 +561,8 @@ Use one shell-level workspace row with three conceptual surfaces:
 
 Inside the stage, render routed content as the base layer and render one or more dynamic containers from the stage's left edge so they appear immediately next to the chat.
 
+Each rendered dynamic container should be resizable. Bind `[formWidth]`, `[minFormWidth]`, and `[maxFormWidth]`, and update the matching shell form item when `acp-form-width-change` fires.
+
 For the dynamic container specifically, a stage-local overlay is acceptable and expected. That means it may visually sit above the routed page inside `.acp-workspace__stage`. What is not allowed is a viewport-level drawer or a panel mounted at the far right edge of the shell.
 
 For the current expected host behavior, multiple `/form ...` requests should open multiple forms at the same time. The host should keep a collection of open form instances and render one `<acp-dynamic-container>` per form so each form can be closed independently without replacing the others.
@@ -545,6 +572,7 @@ For the current expected host behavior, multiple `/form ...` requests should ope
 - Option A: Explicit host wiring.
   - Listen to `(acp-form-requested)` on chat and push a new form entry into host shell state rather than replacing the previous one.
   - Render dynamic containers with host iteration (`*ngFor` or equivalent) inside the stage's form layer so multiple forms can remain open side-by-side.
+  - Initialize a per-form `formWidth` value when adding the form, then update that specific form in `(acp-form-width-change)`.
   - Wire `(acp-cancelled)` and `(acp-open-change)` per instance so each form closes independently.
 - Option B: Package auto-listener.
   - `acp-dynamic-container` auto-listens for bubbled `acp-form-requested` on its shared parent (or `document`) and opens itself when a valid `formSpec` is received.
