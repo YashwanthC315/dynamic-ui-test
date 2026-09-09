@@ -9,7 +9,7 @@ The component is designed to live **inside the application's layout**, beside ro
 Copy the package into the target app folder and install it
 
 ```bash
-npm install ./acp-chat-panel-0.1.1.tgz
+npm install ./acp-chat-panel-0.1.2.tgz
 ```
 
 ## Angular 22 integration
