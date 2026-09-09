@@ -67,8 +67,8 @@ chatOpen = false;
 chatWidth = 360;
 
 interface OpenForm {
-  instanceId: string;   // unique per opened form, NOT the same as formId
-  formSpec: any;        // the formSpec payload from acp-form-requested
+  instanceId: string;    // unique per opened form, NOT the same as formId
+  formSpec: AcpFormSpec; // typed, not `any` — see "Required TypeScript typing" in section 9
   width: number;
 }
 
@@ -388,6 +388,67 @@ Events:
 
 Note: the dynamic container exposes a small top-right close control that closes the container, and each form also includes a secondary button whose label defaults to `Close` (host can override via `cancelLabel`).
 
+Use this exact validation helper — do not write your own ad-hoc validation logic for `formSpec` (via `Record<string, unknown>`, manual bracket-indexed checks, `any`, etc.). Different hand-rolled versions of this check are what has caused TS4111 to appear inconsistently across runs. Copy this function as-is and use it as the single entry point wherever a raw `acp-form-requested` detail needs to become a typed `AcpFormSpec`:
+
+```ts
+function toAcpFormSpec(raw: unknown): AcpFormSpec | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as { formId?: unknown; title?: unknown; fields?: unknown };
+  if (typeof obj.formId !== 'string' || typeof obj.title !== 'string' || !Array.isArray(obj.fields)) {
+    return null;
+  }
+  return { formId: obj.formId, title: obj.title, fields: obj.fields as AcpFormField[] };
+}
+```
+
+After this function returns, treat the result strictly as `AcpFormSpec` — every later read is plain dot notation (`spec.formId`, `spec.title`), never bracket notation, never a re-cast to `Record<string, unknown>`. `onFormRequested` becomes:
+
+```ts
+protected onFormRequested(detail: { formSpec?: unknown } | null): void {
+  const spec = toAcpFormSpec(detail?.formSpec);
+  if (!spec) return;
+  const id = `${spec.formId}-${Date.now()}`;
+  this.dynamicForms = [...this.dynamicForms, { id, spec, open: true, width: this.dynamicFormWidth }];
+  this.dynamicFormSpec = spec;
+  this.dynamicOpen = true;
+}
+```
+
+### Required TypeScript typing for event payloads
+
+Do not type `formSpec`, the `acp-form-requested` detail, or the `acp-submitted` detail as `any`, `Record<string, any>`, `{ [key: string]: any }`, or any other index-signature type. Many host projects run with `"noPropertyAccessFromIndexSignature": true` (part of Angular's strict tsconfig), which raises **TS4111** the moment such a type's properties are read with dot notation (`spec.formId`, `spec.title`, etc.). Whether this fires depends on exact TypeScript/Angular versions and exactly how the payload type gets inferred, so it can pass on one machine and fail on another for what looks like identical code — always define real interfaces instead of relying on `any` to paper over the type:
+
+```ts
+interface AcpFormField {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'textarea';
+  required?: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+  optionsSource?: string;
+  options?: Array<{ label: string; value: string }>;
+  validation?: { min?: number; max?: number; maxLength?: number };
+}
+
+interface AcpFormSpec {
+  formId: string;
+  title: string;
+  fields: AcpFormField[];
+}
+
+interface AcpFormRequestedDetail {
+  formSpec: AcpFormSpec;
+}
+
+interface AcpSubmittedDetail {
+  formId: string;
+  values: Record<string, unknown>;
+}
+```
+
+Use `AcpFormSpec` (not `any`) for `formSpec` everywhere it appears — in `OpenForm`/`openForms`, in `onFormRequested`, and in `onFormSubmitted`/`onDynamicSubmit`. Named interfaces with explicit properties never trigger TS4111 regardless of tsconfig strictness, so this removes the failure mode entirely instead of relying on it happening not to fire.
+
 ### Host wiring (the only supported path for this integration)
 
 Use explicit host wiring — this is the tested, recommended path, not "Option A among several":
@@ -398,10 +459,10 @@ Use explicit host wiring — this is the tested, recommended path, not "Option A
 4. Wire `(acp-cancelled)` and `(acp-open-change)` per instance to remove that one entry from `openForms` by `instanceId`, so each form closes independently without affecting the others.
 5. Wire `(acp-submitted)` to the host's own form-submission handling for that `formId`; on success, also remove the corresponding entry from `openForms`.
 
-Example handlers:
+Example handlers (using the `AcpFormRequestedDetail` / `AcpSubmittedDetail` interfaces defined above — do not substitute `any`):
 
 ```ts
-onFormRequested(detail: { formSpec: any }) {
+onFormRequested(detail: AcpFormRequestedDetail) {
   this.openForms.push({
     instanceId: `${detail.formSpec.formId}-${Date.now()}`,
     formSpec: detail.formSpec,
@@ -422,7 +483,7 @@ onFormWidthChange(instanceId: string, width: number) {
   if (form) form.width = width;
 }
 
-onFormSubmitted(instanceId: string, detail: { formId: string; values: any }) {
+onFormSubmitted(instanceId: string, detail: AcpSubmittedDetail) {
   // route detail.values to the host's existing submission handling for detail.formId
   this.onFormClosed(instanceId);
 }
@@ -496,7 +557,8 @@ Before finishing, verify all of the following:
 - [ ] Route changes do not destroy the shell-level chat/open-forms state unexpectedly.
 - [ ] The ACP theme is defined through the host's design tokens/global theme.
 - [ ] Existing application styles, header, and footer are not unintentionally changed.
-- [ ] `npm run build` / the application's normal Angular build completes successfully.
+- [ ] `npm run build` / the application's normal Angular build completes successfully on a **clean** build (clear `.angular/cache` first) — a build that only passes with a stale cache will fail on a different machine or CI.
+- [ ] No event-payload type (`formSpec`, `acp-form-requested` detail, `acp-submitted` detail, etc.) is typed as `any`, `Record<string, any>`, or another index-signature type — see "Required TypeScript typing for event payloads" in section 9. This is required even if the current tsconfig doesn't set `noPropertyAccessFromIndexSignature`, since other environments building the same code may.
 
 ## Non-goals
 
