@@ -1,112 +1,140 @@
 # ACP Chat Panel — Angular 22 Integration Agent Guide
 
-## Goal
+## Goal (read this first)
 
-Integrate the installed `@acp/chat-panel` package into the existing Angular 22 application so the existing sidebar contains a chat launch button, and the chat panel + any open dynamic-container form(s) form one contiguous full-height block **docked immediately next to the sidebar**. The routed application content is the last item in that row and fills whatever space remains.
+Integrate `@acp/chat-panel` so the **sidebar, chat panel, dynamic form(s), and routed page** form one continuous horizontal flex row under the app header.
 
-The chat and the dynamic container are workspace panels, not overlays.
+**Correct visual result (required):**
 
-> **If you take away only one thing from this document:** the DOM order, left to right, is always
-> `sidebar → chat panel → dynamic container(s), in the order they were opened → routed content`.
-> The routed content is **always the last child**. It is never sandwiched between the chat panel and a dynamic container. This single ordering rule is the most common integration mistake — see the "Known failure mode" callout in section 9 before you write any template code.
+```
+┌────────┬──────────────┬─────────────────┬──────────────────────────────┐
+│sidebar │ AI Agent     │ Student         │ Dashboard / routed content   │
+│ (nav)  │ chat panel   │ Enrollment Form │ (pushed right; may scroll)   │
+│        │ FULL HEIGHT  │ FULL HEIGHT     │                              │
+│        │              │                 │                              │
+└────────┴──────────────┴─────────────────┴──────────────────────────────┘
+```
 
-## Rules
+- Chat is **directly next to the sidebar**, full height (header → footer).
+- Every open dynamic form sits **directly next to the chat** (or the previous form), also full height.
+- The dashboard / routed page is **always the rightmost column**. It never sits between chat and a form.
+- Nothing is an overlay, drawer, modal, or `position: fixed/absolute` panel.
 
-1. Do not create an `NgModule` solely for this integration. Use the standalone component.
-2. Do not use `position: fixed`, `position: absolute`, `z-index` layering, CDK Overlay, Material Drawer overlay mode, or a floating dialog for the chat panel **or** the dynamic container. Both are plain flex children in normal document flow.
-3. The chat panel, every open dynamic container, and the routed application content must all be siblings in the *same* horizontal flex container (`.acp-workspace`). Their DOM order is fixed and non-negotiable:
-   1. chat panel (if open)
-   2. dynamic container(s) (one per open form, in the order opened)
-   3. routed content — **always last**
-4. Resizing the chat (or a dynamic container) must resize the *available width* of the routed content container. It must not visibly reflow, rearrange, or resize the internal layout of the routed dashboard/home page itself (no grid re-columning, no card resizing, no re-wrapping). The routed page keeps its own layout; if that layout is wider than the space available, the content container scrolls horizontally rather than the page's internal grid recomputing.
-5. Preserve the host application's existing sidebar, header, footer, router outlet, routing, and page behavior. Make the smallest integration change possible.
-6. Do not rewrite the package component's CSS to match the host app. Apply the host theme through the `acp-*` classes in a global theme stylesheet.
-7. Do not hard-code application-specific colors, typography, or spacing into the package usage markup.
-8. The chat panel and every open dynamic container must visually span the **full height** of the workspace row — from directly under the persistent header to directly above the persistent footer (if any) — for as long as they are open. Neither should collapse to the height of its own content.
+**Wrong result (forbidden — matches the broken screenshot):**
 
-## 1. Locate the application shell
+```
+┌────────┬──────────────────────────────────────────────┬─────────────────┐
+│sidebar │ Dashboard / routed content                   │ Student Form    │
+│        │ (still full width in the middle)             │ (floating right)│
+└────────┴──────────────────────────────────────────────┴─────────────────┘
+```
 
-Find the component/template that owns the persistent layout containing:
+or any layout where the form appears as a right-side panel *over* or *beside* an unchanged dashboard while chat is only a left column that does not push content.
 
-- the left navigation/sidebar;
-- the main routed page area (`router-outlet` or equivalent);
-- the persistent application header/footer, if applicable.
+---
 
-Do not place the chat inside an individual dashboard/home page component. It belongs at the shell/workspace level so it survives route changes.
+## Hard rules (never violate)
 
-## 2. Register the package custom element
+1. **No overlay.** Never use `position: fixed`, `position: absolute`, `z-index`, CDK Overlay, MatDrawer in overlay mode, dialog, or floating panel for chat or dynamic container.
+2. **One flex row only.** Chat, every dynamic container, and the routed content are **siblings** inside a single horizontal flex container (`.acp-workspace`).
+3. **Fixed DOM order (non-negotiable):**
+   ```
+   .acp-workspace
+     ├── .acp-workspace__chat          (if chatOpen)
+     ├── .acp-workspace__dynamic       (one per open form, in open order)
+     └── .acp-workspace__content       ← ALWAYS LAST (router-outlet lives here)
+   ```
+   Opening or closing a form must **never** move `.acp-workspace__content`. It only inserts/removes `.acp-workspace__dynamic` nodes *before* it.
+4. **Full height.** Chat and every dynamic container must stretch from under the header to above the footer. Use `align-items: stretch` on the row + `height: 100%` on the panel wrappers. They must not collapse to content height.
+5. **Resize only changes available width.** Widening chat/form shrinks the content column. The dashboard’s internal grid/cards must **not** reflow or re-column. Content scrolls horizontally if needed (`overflow: auto; min-width: 0`).
+6. **Shell only.** Put chat state, open-forms state, and the workspace template in the application **shell** (the component that owns sidebar + header + router-outlet). Never put them inside a dashboard/home page component.
+7. **Smallest change.** Keep existing sidebar, header, footer, routing, and page components. Do not create a new shell or NgModule just for this package.
+8. **No `any` / index-signature types** for form payloads (see typing section). Use the exact interfaces below.
 
-This package exports native custom elements, not Angular standalone components.
+---
 
-Import the package once (for example in `src/main.ts`):
+## 1. Register the custom elements
+
+In `src/main.ts` (once):
 
 ```ts
 import '@acp/chat-panel';
 ```
 
-In the standalone shell component, allow custom elements:
+In the **shell** standalone component:
 
 ```ts
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 
 @Component({
   standalone: true,
-  schemas: [CUSTOM_ELEMENTS_SCHEMA]
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  // ...
 })
 export class AppShellComponent {}
 ```
 
-If using `*ngIf`/`*ngFor`, also import `CommonModule` in that standalone component. If using Angular control flow (`@if`, `@for`), `CommonModule` is not required just for conditional/list rendering.
+(If you still use `*ngIf`/`*ngFor`, also import `CommonModule`. Angular control flow `@if`/`@for` does not need it.)
 
-## 3. Add shell state
+---
 
-Add state equivalent to:
+## 2. Shell state
+
+Keep this state **only** in the shell:
 
 ```ts
 chatOpen = false;
 chatWidth = 360;
 
+interface AcpFormField {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'textarea';
+  required?: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+  optionsSource?: string;
+  options?: Array<{ label: string; value: string }>;
+  validation?: { min?: number; max?: number; maxLength?: number };
+}
+
+interface AcpFormSpec {
+  formId: string;
+  title: string;
+  fields: AcpFormField[];
+}
+
 interface OpenForm {
-  instanceId: string;    // unique per opened form, NOT the same as formId
-  formSpec: AcpFormSpec; // typed, not `any` — see "Required TypeScript typing" in section 9
+  instanceId: string;   // unique per open instance (formId + timestamp)
+  formSpec: AcpFormSpec;
   width: number;
 }
 
 openForms: OpenForm[] = [];
 ```
 
-Keep all of this state in the shell, not in individual routed pages.
+`openForms` is an **array**. Multiple forms stay open side-by-side; each closes independently.
 
-The integration may persist `chatWidth` if the application already has an appropriate preference/state mechanism. Do not add a new backend persistence mechanism just for panel width.
+---
 
-`openForms` is a plain array, not a single optional value — multiple forms must be able to stay open side by side (see section 9).
+## 3. Sidebar launch button
 
-## 4. Add the launch button to the existing sidebar
-
-Add one navigation/action button to the existing sidebar. Its action should toggle `chatOpen`.
-
-Use the application's existing button/icon component and styling conventions where possible.
-
-Conceptually:
+Add **one** button/icon to the **existing** sidebar that toggles `chatOpen`. Match the host’s button style and icon conventions. Do not add a second floating launcher.
 
 ```html
-<button type="button" (click)="chatOpen = !chatOpen">
-  AI
-</button>
+<button type="button" (click)="chatOpen = !chatOpen">AI</button>
 ```
 
-The exact markup, icon, tooltip, label, and location should match the existing sidebar implementation.
+---
 
-The button is the launch control. Do not create a second floating launcher elsewhere on the page.
+## 4. Workspace template (copy this structure exactly)
 
-## 5. Create the non-overlay workspace
-
-**The full workspace row, including dynamic containers, in one place.** Build the template exactly to this skeleton — do not reorder these blocks, and do not build the chat block and the dynamic-container block as two separate, unrelated pieces of work. They belong to the same flex row and their relative order is what makes the layout correct:
+The three blocks below **must** appear in this order inside the same flex parent. Do not reorder them. Do not put the dynamic containers after the content. Do not put the chat after the content.
 
 ```html
 <div class="acp-workspace">
 
-  <!-- 1) CHAT — first, directly against the sidebar -->
+  <!-- 1. CHAT — first child, directly against the sidebar -->
   @if (chatOpen) {
     <div class="acp-workspace__chat">
       <acp-chat-panel
@@ -126,8 +154,7 @@ The button is the launch control. Do not create a second floating launcher elsew
     </div>
   }
 
-  <!-- 2) DYNAMIC CONTAINER(S) — second, directly after chat, BEFORE content.
-       One <div> wrapper + one <acp-dynamic-container> per open form. -->
+  <!-- 2. DYNAMIC FORM(S) — immediately after chat, BEFORE content -->
   @for (form of openForms; track form.instanceId) {
     <div class="acp-workspace__dynamic">
       <acp-dynamic-container
@@ -145,7 +172,7 @@ The button is the launch control. Do not create a second floating launcher elsew
     </div>
   }
 
-  <!-- 3) ROUTED CONTENT — always LAST, never before a dynamic container -->
+  <!-- 3. ROUTED CONTENT — ALWAYS the last child -->
   <main class="acp-workspace__content">
     <router-outlet />
   </main>
@@ -153,16 +180,16 @@ The button is the launch control. Do not create a second floating launcher elsew
 </div>
 ```
 
-This ordering matters. Every dynamic container renders **between** the chat panel and `.acp-workspace__content`. Nothing about opening or closing a form ever changes where `.acp-workspace__content` sits in the DOM — it is structurally always the final child of `.acp-workspace`.
+If the shell already has a main content wrapper, reuse it as `.acp-workspace__content`. Never insert a dynamic container after this main element.
 
-Adapt the markup to the actual shell (existing wrapper divs, existing router-outlet host, etc.), but never change the relative order of these three blocks.
+---
 
-Required layout properties:
+## 5. Required CSS (global or shell styles)
 
 ```css
 .acp-workspace {
   display: flex;
-  align-items: stretch;   /* forces chat/dynamic-container/content to full row height */
+  align-items: stretch;   /* critical: forces full-height panels */
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -170,12 +197,7 @@ Required layout properties:
   overflow: hidden;
 }
 
-.acp-workspace__chat {
-  flex: 0 0 auto;
-  height: 100%;
-  min-width: 0;
-}
-
+.acp-workspace__chat,
 .acp-workspace__dynamic {
   flex: 0 0 auto;
   height: 100%;
@@ -184,79 +206,79 @@ Required layout properties:
 
 .acp-workspace__content {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 0;           /* allows the column to shrink */
   min-height: 0;
-  overflow: auto;
+  overflow: auto;         /* scroll instead of reflowing dashboard */
 }
 ```
 
-`.acp-workspace__chat` and `.acp-workspace__dynamic` use the same pattern on purpose: both are fixed-width flex items that stretch to the full height of the row via `align-items: stretch` on the parent, and both sit before `.acp-workspace__content`. If the application already has an equivalent flex/grid workspace, reuse it instead of adding a duplicate wrapper, but keep this same three-slot ordering and the `height: 100%` / `align-items: stretch` behavior.
+Ensure no parent of `.acp-workspace` has a fixed width or `min-width` that prevents the content column from shrinking.
 
-## 6. Preserve the panel as a real layout column
+---
 
-The important behavior, with no form open:
+## 6. Form request / close / submit handlers
 
-```text
-┌──────────────┬───────────────────────────────────────────────┐
-│ AI Agent     │ existing application content                  │
-│ chat         │ dashboard / home / routed page                │
-│              │                                                │
-│              │                                                │
-└──────────────┴───────────────────────────────────────────────┘
-        ↑
-  chat sits directly against the sidebar;
-  content fills the remaining space and
-  simply gets a narrower or wider viewport —
-  its own internal layout does not reflow
+Use this exact helper (do not invent your own validation):
+
+```ts
+function toAcpFormSpec(raw: unknown): AcpFormSpec | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as { formId?: unknown; title?: unknown; fields?: unknown };
+  if (typeof obj.formId !== 'string' || typeof obj.title !== 'string' || !Array.isArray(obj.fields)) {
+    return null;
+  }
+  return { formId: obj.formId, title: obj.title, fields: obj.fields as AcpFormField[] };
+}
 ```
 
-Do not produce this behavior:
+```ts
+onFormRequested(detail: { formSpec?: unknown } | null): void {
+  const spec = toAcpFormSpec(detail?.formSpec);
+  if (!spec) return;
+  this.openForms = [
+    ...this.openForms,
+    {
+      instanceId: `${spec.formId}-${Date.now()}`,
+      formSpec: spec,
+      width: 360
+    }
+  ];
+}
 
-```text
-┌───────────────────────────────────────────────────────────────┐
-│ dashboard content                               ┌────────────┐│
-│                                                │ AI Agent   ││
-│                                                │ overlay/   ││
-│                                                │ right dock ││
-└────────────────────────────────────────────────┴────────────┘│
+onFormClosed(instanceId: string): void {
+  this.openForms = this.openForms.filter(f => f.instanceId !== instanceId);
+}
+
+onFormOpenChange(instanceId: string, isOpen: boolean): void {
+  if (!isOpen) this.onFormClosed(instanceId);
+}
+
+onFormWidthChange(instanceId: string, width: number): void {
+  const form = this.openForms.find(f => f.instanceId === instanceId);
+  if (form) form.width = width;
+}
+
+onFormSubmitted(instanceId: string, detail: { formId: string; values: Record<string, unknown> }): void {
+  // Hand detail.values to the host’s existing submission logic for detail.formId
+  this.onFormClosed(instanceId);
+}
 ```
 
-Rendering the chat to the right of the routed content (or as an overlay on top of it) is explicitly prohibited — the chat must dock directly next to the sidebar, on the left of the content area.
+- Always **push** onto `openForms`; never replace the whole array with a single form.
+- Each form closes independently via its own `instanceId`.
+- Do **not** rely on the package’s document-level auto-listener; wire `(acp-form-requested)` explicitly on the chat panel.
 
-Also avoid this, where resizing forces the dashboard's own grid to visibly re-layout:
+Test command that must open the form correctly:
 
-```text
-Panel widened →  [chat: wider] [dashboard: cards re-wrap/shrink/reflow]  ✗
-Panel widened →  [chat: wider] [dashboard: same layout, less viewport]  ✓
+```
+/form create enroll student form
 ```
 
-The routed page's internal content (card sizes, grid columns, etc.) should stay visually stable across a resize. Only the amount of viewport available to it changes.
+---
 
-## 7. Resizing
+## 7. Theme
 
-The package already provides the resize handle and emits `acp-width-change` (chat) / `acp-form-width-change` (dynamic container).
-
-Set `dock="left"` on `acp-chat-panel` so the resize handle appears on the panel's right edge, adjacent to whatever comes next (a dynamic container, or the routed content).
-
-The integration must:
-
-- keep the chat, and every dynamic container, as flex items positioned before `.acp-workspace__content`;
-- bind the current width to `[width]` (chat) / `[formWidth]` (dynamic container);
-- update shell state from `(acp-width-change)` / `(acp-form-width-change)`;
-- keep sensible bounds — normally 260–640 px for chat, 320–560 px for a form;
-- give `.acp-workspace__content` `min-width: 0` so flexbox can shrink its container, and `overflow: auto` so its own content can scroll horizontally instead of being forced to reflow;
-- verify that the application does not have a parent `min-width` or fixed width that prevents the content column from shrinking;
-- avoid triggering any responsive/container-query logic in the routed page that would cause it to re-layout in response to the container width change — the content should scroll rather than rearrange.
-
-Do not implement a second resize handler in the application unless the package behavior is demonstrably incompatible with the host shell.
-
-## 8. Theme integration
-
-The package exposes stable ACP selectors. The application should define the visual theme globally.
-
-Start from `styles/acp-chat-panel.theme.css` and adapt its values to the application's design system. Keep the selector names intact.
-
-Required selectors include:
+Do not restyle the package internals. Map host design tokens onto the package’s stable selectors in a **global** stylesheet (e.g. `src/styles.css` or `styles/acp-chat-panel.theme.css`):
 
 ```text
 .acp-panel
@@ -278,9 +300,7 @@ Required selectors include:
 .acp-resize-handle
 ```
 
-Treat these selectors as the ACP theme contract. The component supplies structural defaults; the host application supplies design-token values.
-
-If the application uses CSS custom properties/design tokens, map them in these selectors, for example:
+Example:
 
 ```css
 .acp-header {
@@ -290,288 +310,59 @@ If the application uses CSS custom properties/design tokens, map them in these s
 }
 ```
 
-Do not introduce a second unrelated token system.
-
-## 9. Dynamic container addendum
-
-This package also ships `<acp-dynamic-container>` in the same runtime bundle.
-
-### Purpose
-
-- Keep chat and dynamic container(s) as sibling workspace surfaces.
-- Open a form surface from chat text commands.
-- Keep host application business logic (options, submission handlers, APIs) outside package internals.
-
-### ⚠️ Known failure mode — read before implementing
-
-The single most common integration mistake with weaker agent models is appending the dynamic container **after** `.acp-workspace__content` instead of **before** it. This produces the routed dashboard visually sandwiched between the chat panel and the form, like this — **do not build this**:
-
-```text
-✗ WRONG — dynamic container appended after content:
-
-┌──────┬─────────────────────────────────┬──────────────┐
-│ chat │ dashboard / routed content      │ dynamic      │
-│      │ (visible in the middle)         │ container    │
-└──────┴─────────────────────────────────┴──────────────┘
-   DOM order: chat, content, dynamic-container   ✗ WRONG
-```
-
-```text
-✓ CORRECT — dynamic container inserted before content:
-
-┌──────┬──────────────┬─────────────────────────────────┐
-│ chat │ dynamic      │ dashboard / routed content       │
-│      │ container    │ (pushed right, scrolls if tight) │
-└──────┴──────────────┴─────────────────────────────────┘
-   DOM order: chat, dynamic-container, content   ✓ CORRECT
-```
-
-The dynamic container must sit directly against the chat panel's right edge, exactly like the chat panel sits directly against the sidebar. `.acp-workspace__content` (the `<main>` wrapping `<router-outlet>`) must remain the **last** child of `.acp-workspace` at all times, whether zero, one, or several forms are open. Opening or closing a form never moves `.acp-workspace__content` — it only inserts/removes `.acp-workspace__dynamic` elements before it. See the exact template in section 5 — copy it verbatim rather than re-deriving this ordering.
-
-### Chat → form trigger
-
-`<acp-chat-panel>` emits `acp-form-requested` when a sent message starts with the configured trigger prefix.
-
-Default prefix: `/form`
-
-Supported examples:
-
-- `/form create student`
-- `/form create enroll student form` (recommended test command)
-- `/form:create student`
-- `/form {"formId":"create-student","title":"Create Student","fields":[{"id":"name","label":"Name","type":"text","required":true}]}`
-
-Recommended student-enrollment test command details:
-
-- command: `/form create enroll student form`
-- generated fields: Name, Date Of Birth, Gender, Course, Email (EXTRA), Mobile (EXTRA), Father Name (EXTRA)
-
-Event payload shape:
-
-```ts
-{
-  formSpec: {
-    formId: string;
-    title: string;
-    fields: Array<{
-      id: string;
-      label: string;
-      type: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'textarea';
-      required?: boolean;
-      disabled?: boolean;
-      placeholder?: string;
-      optionsSource?: string;
-      options?: Array<{ label: string; value: string }>;
-      validation?: { min?: number; max?: number; maxLength?: number };
-    }>;
-  }
-}
-```
-
-### Dynamic container API
-
-Inputs/properties:
-
-- `open`
-- `title`
-- `formWidth` / `form-width`
-- `minFormWidth` / `min-form-width`
-- `maxFormWidth` / `max-form-width`
-- `formSpec`
-
-Events:
-
-- `acp-open-change`
-- `acp-form-width-change`
-- `acp-submitted` (`{ formId, values }`)
-- `acp-cancelled`
-
-Note: the dynamic container exposes a small top-right close control that closes the container, and each form also includes a secondary button whose label defaults to `Close` (host can override via `cancelLabel`).
-
-Use this exact validation helper — do not write your own ad-hoc validation logic for `formSpec` (via `Record<string, unknown>`, manual bracket-indexed checks, `any`, etc.). Different hand-rolled versions of this check are what has caused TS4111 to appear inconsistently across runs. Copy this function as-is and use it as the single entry point wherever a raw `acp-form-requested` detail needs to become a typed `AcpFormSpec`:
-
-```ts
-function toAcpFormSpec(raw: unknown): AcpFormSpec | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const obj = raw as { formId?: unknown; title?: unknown; fields?: unknown };
-  if (typeof obj.formId !== 'string' || typeof obj.title !== 'string' || !Array.isArray(obj.fields)) {
-    return null;
-  }
-  return { formId: obj.formId, title: obj.title, fields: obj.fields as AcpFormField[] };
-}
-```
-
-After this function returns, treat the result strictly as `AcpFormSpec` — every later read is plain dot notation (`spec.formId`, `spec.title`), never bracket notation, never a re-cast to `Record<string, unknown>`. `onFormRequested` becomes:
-
-```ts
-protected onFormRequested(detail: { formSpec?: unknown } | null): void {
-  const spec = toAcpFormSpec(detail?.formSpec);
-  if (!spec) return;
-  const id = `${spec.formId}-${Date.now()}`;
-  this.dynamicForms = [...this.dynamicForms, { id, spec, open: true, width: this.dynamicFormWidth }];
-  this.dynamicFormSpec = spec;
-  this.dynamicOpen = true;
-}
-```
-
-### Required TypeScript typing for event payloads
-
-Do not type `formSpec`, the `acp-form-requested` detail, or the `acp-submitted` detail as `any`, `Record<string, any>`, `{ [key: string]: any }`, or any other index-signature type. Many host projects run with `"noPropertyAccessFromIndexSignature": true` (part of Angular's strict tsconfig), which raises **TS4111** the moment such a type's properties are read with dot notation (`spec.formId`, `spec.title`, etc.). Whether this fires depends on exact TypeScript/Angular versions and exactly how the payload type gets inferred, so it can pass on one machine and fail on another for what looks like identical code — always define real interfaces instead of relying on `any` to paper over the type:
-
-```ts
-interface AcpFormField {
-  id: string;
-  label: string;
-  type: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'textarea';
-  required?: boolean;
-  disabled?: boolean;
-  placeholder?: string;
-  optionsSource?: string;
-  options?: Array<{ label: string; value: string }>;
-  validation?: { min?: number; max?: number; maxLength?: number };
-}
-
-interface AcpFormSpec {
-  formId: string;
-  title: string;
-  fields: AcpFormField[];
-}
-
-interface AcpFormRequestedDetail {
-  formSpec: AcpFormSpec;
-}
-
-interface AcpSubmittedDetail {
-  formId: string;
-  values: Record<string, unknown>;
-}
-```
-
-Use `AcpFormSpec` (not `any`) for `formSpec` everywhere it appears — in `OpenForm`/`openForms`, in `onFormRequested`, and in `onFormSubmitted`/`onDynamicSubmit`. Named interfaces with explicit properties never trigger TS4111 regardless of tsconfig strictness, so this removes the failure mode entirely instead of relying on it happening not to fire.
-
-### Host wiring (the only supported path for this integration)
-
-Use explicit host wiring — this is the tested, recommended path, not "Option A among several":
-
-1. Listen to `(acp-form-requested)` on `<acp-chat-panel>` and **push** a new entry into `openForms` (do not replace the array's existing contents — multiple `/form ...` requests must be able to stay open at once, each as its own `<acp-dynamic-container>`).
-2. Generate a unique `instanceId` per pushed entry (e.g. `formSpec.formId + '-' + Date.now()`), since the same `formId` could in principle be requested twice.
-3. Render dynamic containers with `@for` (or `*ngFor`) over `openForms`, tracking by `instanceId`, in the exact template position shown in section 5 (between chat and content — never after content).
-4. Wire `(acp-cancelled)` and `(acp-open-change)` per instance to remove that one entry from `openForms` by `instanceId`, so each form closes independently without affecting the others.
-5. Wire `(acp-submitted)` to the host's own form-submission handling for that `formId`; on success, also remove the corresponding entry from `openForms`.
-
-Example handlers (using the `AcpFormRequestedDetail` / `AcpSubmittedDetail` interfaces defined above — do not substitute `any`):
-
-```ts
-onFormRequested(detail: AcpFormRequestedDetail) {
-  this.openForms.push({
-    instanceId: `${detail.formSpec.formId}-${Date.now()}`,
-    formSpec: detail.formSpec,
-    width: 360
-  });
-}
-
-onFormClosed(instanceId: string) {
-  this.openForms = this.openForms.filter(f => f.instanceId !== instanceId);
-}
-
-onFormOpenChange(instanceId: string, isOpen: boolean) {
-  if (!isOpen) this.onFormClosed(instanceId);
-}
-
-onFormWidthChange(instanceId: string, width: number) {
-  const form = this.openForms.find(f => f.instanceId === instanceId);
-  if (form) form.width = width;
-}
-
-onFormSubmitted(instanceId: string, detail: AcpSubmittedDetail) {
-  // route detail.values to the host's existing submission handling for detail.formId
-  this.onFormClosed(instanceId);
-}
-```
-
-Do not use the package's document-level auto-listener behavior for `acp-form-requested` for this integration — explicit host wiring is required so the host fully owns the `openForms` collection and each instance's independent close behavior.
-
-### Local run configuration
-
-For the tested reference host state, configure the Angular start script to run on port `4300` instead of the CLI default `4200`.
-
-### Validation and supported field types
-
-Supported types are fixed and deterministic:
-
-- `text`
-- `number`
-- `date`
-- `checkbox`
-- `select`
-- `textarea`
-
-Unsupported/unknown field types are normalized by the package runtime to safe defaults.
-
-## 10. Message behavior
-
-The package does not make assumptions about the AI backend.
-
-When `(acp-message-sent)` fires, connect it to the application's existing chat/agent service or API. Do not add a fake backend, HTTP endpoint, authentication flow, or LLM integration unless the host application already requires it.
-
-The host must own chat messages and bind them via `[messages]`; do not only log `(acp-message-sent)`.
-
-## 11. Avoid common Angular errors
-
-To avoid the exact build errors seen earlier:
-
-- Do not import `AcpChatPanelComponent` (or an equivalent dynamic-container class) from `@acp/chat-panel` — neither is exported as an Angular component.
-- Register with `import '@acp/chat-panel';` once at app startup.
-- For standalone components, use `schemas: [CUSTOM_ELEMENTS_SCHEMA]`.
-- Use package event names exactly: `acp-open-change`, `acp-width-change`, `acp-message-sent`, `acp-new-chat`, `acp-help`, `acp-form-requested`, `acp-form-width-change`, `acp-submitted`, `acp-cancelled`.
-- In strict Angular templates, read event payload as `$any($event).detail`.
-- Define ACP theme selectors in global styles (for example `src/styles.css`), not component-scoped styles.
-
-To avoid the runtime/layout issues seen later:
-
-- Do not re-render the full custom element on every textarea `input` event inside the package runtime; update draft/counter/send state without replacing the textarea node, otherwise the caret jumps to the start and typing appears reversed.
-- Do not place `.acp-workspace__chat` after `.acp-workspace__content` in the DOM — this causes the chat to render on the right of the dashboard instead of next to the sidebar.
-- **Do not place `.acp-workspace__dynamic` after `.acp-workspace__content` in the DOM** — this causes a submitted-looking layout where the dashboard is visibly sandwiched between the chat and the form, instead of the form sitting directly against the chat with the dashboard pushed to the far right. See the diagram in section 9.
-- Do not let `.acp-workspace__chat` or `.acp-workspace__dynamic` collapse to their own content height — the parent `.acp-workspace` needs `align-items: stretch` and both children need `height: 100%`, so each spans the full row height for as long as it is open.
-- Do not let the routed page's own CSS respond to the shrinking container (e.g. container queries, JS-measured breakpoints) in a way that re-flows its grid on resize — this produces visible dashboard reflow, which is prohibited. Let the content scroll instead.
-
-## 12. Verification checklist
-
-Before finishing, verify all of the following:
-
-- [ ] The sidebar contains exactly one chat launch control.
-- [ ] Clicking the control opens/closes the panel.
-- [ ] The panel is at the shell/workspace level, not inside the dashboard page.
-- [ ] The panel is not an overlay.
-- [ ] No fixed/absolute positioning is used to create the chat or a dynamic container.
-- [ ] The chat panel renders directly adjacent to the sidebar.
-- [ ] Sending `/form create enroll student form` opens a dynamic container **directly against the chat panel's right edge**, with the routed dashboard/home content pushed further right — not with the dashboard visible between the chat and the form.
-- [ ] Inspect the rendered DOM directly (e.g. browser devtools) and confirm the literal child order of `.acp-workspace` is: `.acp-workspace__chat` (if open) → one `.acp-workspace__dynamic` per open form → `.acp-workspace__content`, in that order, with `.acp-workspace__content` always last.
-- [ ] Sending a second `/form ...` command opens a second dynamic container beside the first, without closing or replacing it; both can be closed independently.
-- [ ] The chat panel and every open dynamic container visually span the full height of the workspace row (top to bottom), not just the height of their own content.
-- [ ] Increasing chat or form width narrows the content container's available space; decreasing it widens that space.
-- [ ] The dashboard/home page's own internal layout (grid columns, card sizing) stays visually unchanged as the chat/form is resized — no reflow, rearranging, or resizing of its content. The content area scrolls if it doesn't fit.
-- [ ] The resize handle works with pointer dragging, for both chat and dynamic containers.
-- [ ] Keyboard arrow resizing works when a resize handle is focused.
-- [ ] The panel(s) remain usable at minimum and maximum width.
-- [ ] Route changes do not destroy the shell-level chat/open-forms state unexpectedly.
-- [ ] The ACP theme is defined through the host's design tokens/global theme.
-- [ ] Existing application styles, header, and footer are not unintentionally changed.
-- [ ] `npm run build` / the application's normal Angular build completes successfully on a **clean** build (clear `.angular/cache` first) — a build that only passes with a stale cache will fail on a different machine or CI.
-- [ ] No event-payload type (`formSpec`, `acp-form-requested` detail, `acp-submitted` detail, etc.) is typed as `any`, `Record<string, any>`, or another index-signature type — see "Required TypeScript typing for event payloads" in section 9. This is required even if the current tsconfig doesn't set `noPropertyAccessFromIndexSignature`, since other environments building the same code may.
+---
+
+## 8. Message handling
+
+The package does not talk to an LLM. On `(acp-message-sent)` call the host’s existing chat/agent service and keep the message list in shell state bound to `[messages]`. Do not invent a fake backend.
+
+---
+
+## 9. Common failures and how to avoid them
+
+| Failure (what you must not ship) | Cause | Fix |
+|----------------------------------|-------|-----|
+| Form appears on the far right of the dashboard; dashboard stays in the middle | Dynamic container placed **after** `.acp-workspace__content` | Move every `.acp-workspace__dynamic` so it is a sibling **before** the content main |
+| Chat is only as tall as its messages | Missing `align-items: stretch` or `height: 100%` on wrappers | Apply the exact CSS in section 5 |
+| Dashboard cards reflow when chat is resized | Content column has no `min-width: 0` / `overflow: auto`, or page uses container queries that react to width | Keep content scrolling; do not let the page re-layout |
+| Chat renders to the right of the dashboard | Chat placed after content in the DOM | Chat must be the first child of `.acp-workspace` (when open) |
+| Only one form can be open | `openForms` treated as a single value instead of an array | Always push; track by `instanceId` |
+| TS4111 / property access errors | `formSpec` typed as `any` or `Record<string, any>` | Use the exact interfaces in section 2 and `toAcpFormSpec` |
+| Build fails on clean CI | Stale `.angular/cache` or wrong import of a non-existent Angular component | `import '@acp/chat-panel';` only; `CUSTOM_ELEMENTS_SCHEMA`; clear cache before verifying |
+
+---
+
+## 10. Verification checklist (must all pass)
+
+- [ ] Sidebar has exactly one chat launch control.
+- [ ] Chat opens/closes from that control and is **full height** next to the sidebar.
+- [ ] Chat and forms are **not** overlays / fixed / absolute.
+- [ ] DOM order inside `.acp-workspace` is always: chat (if open) → dynamic container(s) → content. Content is never between chat and a form.
+- [ ] `/form create enroll student form` opens a full-height form **directly against the chat’s right edge**; the dashboard is pushed further right.
+- [ ] A second `/form ...` opens another form beside the first; both close independently.
+- [ ] Resizing chat or form only changes the content column’s width; dashboard internal layout does not reflow.
+- [ ] Resize handles work with pointer and keyboard.
+- [ ] Route changes do not destroy shell chat/form state.
+- [ ] Theme uses only the `acp-*` selectors in global styles.
+- [ ] Clean build (`rm -rf .angular/cache && npm run build`) succeeds.
+- [ ] No event payload is typed as `any` or an index-signature type.
+
+---
 
 ## Non-goals
 
 Do not:
 
-- create a new application shell;
-- create an NgModule solely for the package;
-- implement an AI/LLM service;
-- implement authentication;
+- create a new application shell or NgModule solely for this package;
+- implement an AI/LLM service, auth, or backend;
 - replace the existing sidebar;
-- create an overlay/drawer/modal for the chat panel or the dynamic container;
-- render the chat panel to the right of the routed content instead of next to the sidebar;
-- render a dynamic container after the routed content instead of directly against the chat panel;
-- make the routed dashboard/home page reflow its own internal layout in response to chat/form resizing;
-- modify routed dashboard/home components just to make the panel(s) fit;
-- hard-code a brand theme into application components outside the ACP theme selectors.
+- use overlay / drawer / modal / fixed positioning for chat or forms;
+- put the chat or a form after the routed content in the DOM;
+- make the dashboard reflow its own grid when panels resize;
+- hard-code brand colors into package markup outside the ACP theme selectors.
+
+---
+
+## One-sentence summary for the agent
+
+**Build a single full-height flex row whose children are, in this exact order: chat panel (optional) → zero or more dynamic form panels → the existing router-outlet content; never reverse or interleave that order, and never use overlays.**
