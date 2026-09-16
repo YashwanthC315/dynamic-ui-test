@@ -24,7 +24,7 @@
           [width]="chatWidth"
           [min-width]="280"
           [max-width]="640"
-          [messages]="chatMessages"
+          [messages]="chatMessages()"
           (acp-open-change)="chatOpen = $any($event).detail"
           (acp-width-change)="chatWidth = $any($event).detail"
           (acp-message-sent)="onChatMessage($any($event).detail)"
@@ -35,14 +35,26 @@
       </div>
 
       <div class="acp-workspace__container">
-        <ng-container *ngIf="dynamicForms.length; else hostContent">
+        <ng-container *ngIf="dynamicForms.length || buddyWorkspaces.length; else hostContent">
           <div class="acp-dynamic-forms" style="display:flex; gap:12px; align-items:flex-start;">
+            <acp-buddy-enrol-workspace
+              *ngFor="let workspace of buddyWorkspaces"
+              [surface]="workspace.surface"
+              style="height:100%; min-width:520px; flex:1 1 auto;"
+              (acp-buddy-cancelled)="closeBuddyWorkspace(workspace.id)"
+              (acp-buddy-parse-requested)="onBuddyParse($any($event).detail)"
+              (acp-buddy-check-requested)="onBuddyCheck($any($event).detail)"
+              (acp-buddy-submit)="onBuddySubmit($any($event).detail)"
+              (acp-buddy-record-selected)="onBuddyRecordSelected($any($event).detail)"
+            ></acp-buddy-enrol-workspace>
             <acp-dynamic-container
               *ngFor="let form of dynamicForms"
               [open]="form.open"
+              [title]="form.spec.title"
               [formSpec]="form.spec"
               [attr.form-width]="form.width"
               (acp-open-change)="onFormOpenChange(form.id, $any($event).detail)"
+              (acp-form-width-change)="onFormWidthChange(form.id, $any($event).detail)"
               (acp-submitted)="onDynamicSubmit($any($event).detail)"
               (acp-cancelled)="closeFormById(form.id)"
             ></acp-dynamic-container>

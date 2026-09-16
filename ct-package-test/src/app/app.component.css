@@ -99,6 +99,19 @@
   overflow: hidden;
 }
 
+.acp-workspace__container {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.acp-dynamic-forms {
+  height: 100%;
+  min-height: 0;
+}
+
 acp-chat-panel {
   display: block;
   height: 100%;
