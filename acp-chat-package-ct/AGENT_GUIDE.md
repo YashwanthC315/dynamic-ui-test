@@ -580,6 +580,80 @@ For the current expected host behavior, multiple `/form ...` requests should ope
 
 Option A is the recommended integration path for the tested host state because the host owns the collection of open forms and their independent close behavior.
 
+### Host-mount hook (Buddy integration)
+
+The package emits an opt-in hook event when a dynamic container opens so host applications can mount richer host-side components (for example the Buddy workspace surface) directly into the container. This keeps the package lightweight but allows the package to provide a stable mount point for host renderers.
+
+- Event: `acp-custom-host-ready` (bubbles, composed)
+- Event detail: `{ formId: string, hostSelector: string }` where `hostSelector` is a selector string pointing at an element the host can use as a mount point inside the opened dynamic container.
+
+Behavior and recommended host wiring:
+
+- Listen for `acp-custom-host-ready` on the shell or `document`.
+- When received, locate the opened dynamic container and then find the mount point using `detail.hostSelector`.
+- Create and append your host component (Angular element or plain DOM) into that mount point. Use `pointer-events` and focus management as needed.
+
+Example (vanilla JS mounting an Angular element named `buddy-enrol-workspace-surface`):
+
+```ts
+// Run once at app startup (after importing '@acp/chat-panel')
+document.addEventListener('acp-custom-host-ready', (ev: CustomEvent) => {
+  const { formId, hostSelector } = ev.detail || {};
+  if (!formId || !hostSelector) return;
+
+  // Find the first matching mount point in the open container
+  const mount = document.querySelector(hostSelector);
+  if (!mount) return;
+
+  // Create and mount the Buddy element (this element must be available
+  // in the host app, for example as an Angular standalone component
+  // exposed as a custom element or a simple DOM renderer).
+  const buddy = document.createElement('buddy-enrol-workspace-surface');
+  buddy.setAttribute('data-acp-mounted-form-id', formId);
+  // Optional: wire events from Buddy back into host logic
+  buddy.addEventListener('buddy-submit', (e) => console.log('Buddy submitted', e.detail));
+
+  // Clear previous mount if desired, then mount
+  mount.innerHTML = '';
+  mount.appendChild(buddy);
+});
+```
+
+If you're mounting an Angular component, register it as a custom element (Angular Elements) or bootstrap it into the container via `ViewContainerRef`/`createComponent` inside a host-managed anchor element.
+
+Mount point details
+
+- The package will dispatch the hook with a `hostSelector` shaped like `[data-acp-custom-host="{formId}"]`. Hosts should create or target that attribute when mounting.
+- The host may also choose to create the mount element manually when it renders `<acp-dynamic-container>` instances. Example markup inside the container slot (host-rendered template):
+
+```html
+<div class="acp-form-shell" data-acp-custom-host="student-enroll"></div>
+```
+
+Buddy test example
+
+1. Ensure your host app imports the package once (for example in `src/main.ts`):
+
+```ts
+import '@acp/chat-panel';
+```
+
+2. Add the `acp-custom-host-ready` listener (example above) and make sure the Buddy element (`buddy-enrol-workspace-surface`) is registered or available in the host.
+
+3. Open the chat and send the recommended student enroll trigger:
+
+```
+/form create enroll student form
+```
+
+4. Verify:
+- `<acp-dynamic-container>` opens from the stage's left edge next to the chat.
+- Host receives an `acp-custom-host-ready` event with `formId: 'student-enroll'`.
+- The host locates the mount point (`detail.hostSelector`) and mounts `buddy-enrol-workspace-surface` into it.
+- The Buddy UI renders inside the dynamic container and can submit via its own events. The dynamic container still emits `acp-submitted` when host forwards final values (host may choose to translate Buddy events into `acp-submitted`).
+
+If you plan to test with a blank application, the above wiring is sufficient: the package provides the hook, and your blank host is responsible for registering Buddy and attaching it when `acp-custom-host-ready` fires.
+
 ### Local run configuration
 
 For the tested reference host state, configure the Angular start script to run on port `4300` instead of the CLI default `4200`.
