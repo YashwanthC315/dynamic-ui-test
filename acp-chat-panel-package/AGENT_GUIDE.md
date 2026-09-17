@@ -753,6 +753,62 @@ import '@acp/chat-panel';
 
 If you plan to test with a blank application, the above wiring is sufficient: the package provides the hook, and your blank host is responsible for registering Buddy and attaching it when `acp-custom-host-ready` fires.
 
+## Mock Harness (developer testing)
+
+If you want to validate the integration end-to-end without a real backend, use the repository `mock-harness/` service. The harness provides predictable responses for chat and form workflows used in guide examples.
+
+Start the mock harness (project root):
+
+```powershell
+cd mock-harness
+$env:MOCK_HARNESS_CONFIG='./mock-harness.config.json'
+npm run dev
+```
+
+Or run directly with ts-node:
+
+```powershell
+cd mock-harness
+npx ts-node --skipProject --transpile-only server.ts
+```
+
+What to verify when using the harness
+
+- Ensure `import '@acp/chat-panel'` is in `src/main.ts` before the app bootstraps so the package registers custom elements prior to harness events.
+- Start your host app (for example `npm start`) on port `4300` if you use the referenced host config.
+- Open the app, toggle the chat, and send the test command:
+
+```
+/form create enroll student form
+```
+
+- The harness will emit a `acp-form-requested` payload and the package should open an `<acp-dynamic-container>` in the stage. Use the dev helper `acp-chat-panel-package/tools/check-acp-host.js` (paste into the console) to validate mount location, background opacity, and `formWidth` binding.
+
+Quick test steps (1–2 minutes)
+
+1. Start the harness:
+
+```powershell
+cd mock-harness
+$env:MOCK_HARNESS_CONFIG='./mock-harness.config.json'
+npm run dev
+```
+
+2. Ensure `import '@acp/chat-panel'` exists in `src/main.ts` and start your host app (`npm start`).
+
+3. Open the UI, open the chat panel, and send:
+
+```
+/form create enroll student form
+```
+
+4. Confirm an `<acp-dynamic-container>` opens inside `.acp-workspace__stage` and is resizable. Run the dev helper in the Console if unsure.
+
+Connectivity notes
+
+- Ensure CORS and dev server ports allow host ↔ harness communication. If the harness runs on a different port, point your host's API client or agent service base URL to the harness address (for example `http://localhost:4300`).
+- If the harness uses a different event surface, verify the host and harness share the same origin or configure the harness to accept cross-origin requests from your host origin.
+
 ### Local run configuration
 
 For the tested reference host state, configure the Angular start script to run on port `4300` instead of the CLI default `4200`.
