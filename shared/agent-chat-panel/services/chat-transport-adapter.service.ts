@@ -57,9 +57,34 @@ export class ChatTransportAdapterService {
           } satisfies ChatBlock,
         ];
 
-    return {
-      ...response,
-      blocks,
-    };
+    // Post-process: if harness returned a `surface` block, expose it as
+    // `response.surface` for easier host consumption. Also accept a
+    // leading `/form { ... }` text payload inside a text block and parse it
+    // as a surface-like `formSpec` for backward compatibility.
+    const out: any = { ...response, blocks };
+
+    const surfaceBlock = blocks.find(b => (b as any).type === 'surface');
+    if (surfaceBlock && (surfaceBlock as any).surface) {
+      out.surface = (surfaceBlock as any).surface;
+    } else {
+      // inspect text blocks for `/form ` prefix
+      for (const b of blocks) {
+        if ((b as any).type === 'text' && typeof (b as any).text === 'string') {
+          const txt = ((b as any).text).trim();
+          if (txt.startsWith('/form')) {
+            const payload = txt.slice('/form'.length).trim();
+            try {
+              const parsed = payload.startsWith('{') ? JSON.parse(payload) : null;
+              if (parsed) out.surface = { type: 'form', formSpec: parsed };
+            } catch {
+              // ignore parse errors
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    return out as ChatResponse;
   }
 }
