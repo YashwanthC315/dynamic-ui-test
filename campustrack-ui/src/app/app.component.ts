@@ -518,6 +518,19 @@ export class AppComponent {
       this.feesTab = 'collection';
       this.collectSelectedFee({ studentId: event.studentId, mode: event.mode });
       return;
+
+    // Support host-side opening of structured surfaces from transport responses
+    if (event.type === 'open_surface' && event.surface) {
+      try {
+        const spec = event.surface?.formSpec ?? event.surface;
+        if (!spec) return;
+        const id = crypto.randomUUID();
+        this.dynamicForms = [...this.dynamicForms, { id, spec, open: true, width: this.dynamicFormWidth }];
+      } catch (err) {
+        console.error('Failed to open surface from agent event', err);
+      }
+      return;
+    }
     }
 
     if (event.type === 'set_fee_mode') {

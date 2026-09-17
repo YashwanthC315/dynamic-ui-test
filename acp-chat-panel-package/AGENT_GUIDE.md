@@ -62,6 +62,8 @@ Import the package once (for example in `src/main.ts`):
 import '@acp/chat-panel';
 ```
 
+Note: import the package in `src/main.ts` (top-level app entry) so the custom elements are registered eagerly and not removed by tree-shaking or lazy-route bundling. Do not import the package only inside a lazy-loaded route.
+
 In the standalone shell component, allow custom elements:
 
 ```ts
@@ -101,6 +103,8 @@ Each form instance should carry its own width state so resizing one form does no
   formSpec: unknown;
   formWidth: number;
 }
+
+Also: every dynamic form must be resizable by the user. Bind `[formWidth]` for each form instance and listen for `(acp-form-width-change)` to update only that form's `formWidth` in shell state. Buddy-mounted workspaces must honor the supplied `formWidth` and the container's resize handle — they must not assume or expand to 100% width of the stage.
 ```
 
 ## 4. Add the launch button to the existing sidebar
@@ -464,6 +468,72 @@ Before finishing, verify all of the following:
 - [ ] Existing application styles are not unintentionally changed.
 - [ ] `npm run build` / the application's normal Angular build completes successfully.
 
+Robustness: prevent transparent backgrounds & layout glitches
+
+The integration must explicitly protect against transparent backgrounds, pointer-event leakage, and accidental visual layering that makes dynamic containers appear see-through or detached. Add these host-side rules and checks to avoid the issue shown in the attached screenshot.
+
+- Strict host CSS overrides (apply in your global stylesheet, not component-scoped):
+
+```css
+/* Ensure the dynamic container surface is opaque and visually separated */
+.acp-workspace__form,
+.acp-workspace__form .acp-dynamic-container,
+.acp-workspace__form [data-acp-dynamic-shell] {
+  background-color: var(--app-surface, #fff) !important;
+  color: var(--app-on-surface, #111) !important;
+  box-shadow: 0 2px 10px rgba(16,24,40,0.06) !important;
+  border-left: 1px solid rgba(16,24,40,0.06) !important;
+  min-height: 0; /* allow flex height propagation */
+}
+
+/* Form layer host must capture pointer events only for the forms */
+.acp-workspace__form-layer {
+  pointer-events: none; /* default: let clicks pass through when no form present */
+}
+.acp-workspace__form {
+  pointer-events: auto; /* forms themselves accept pointer events */
+}
+
+/* Ensure routed content does not become visually transparent under forms */
+.acp-workspace__content > * {
+  background-clip: padding-box;
+  -webkit-font-smoothing: antialiased;
+}
+```
+
+- Enforce non-transparent defaults in host theme mapping:
+  - Map `acp-*` selectors to host tokens that produce opaque surfaces — avoid token values like `transparent` or `rgba(...,0)` for backgrounds.
+  - If your design tokens allow transparency, provide fallbacks in the global `acp-*` selectors above.
+
+- Layout and stacking rules to avoid mount-point bleed-through:
+  - Keep `.acp-workspace__form-layer` position: absolute within `.acp-workspace__stage` (as recommended). Do not move it to a higher-level container.
+  - Do not put `acp-dynamic-container` outside `.acp-workspace__stage`. If the mount point is moved, the container may inherit unexpected stacking context or transparency.
+  - Ensure no global CSS rule sets `opacity` on `.acp-workspace__stage`, `.acp-workspace__form-layer`, or their ancestors.
+
+- Defensive runtime checks (recommended to run in dev builds):
+  - On `(acp-form-requested)` or when rendering a dynamic container, verify via JS that computed background is not transparent. Example check:
+
+```js
+const el = document.querySelector('.acp-workspace__form .acp-dynamic-container');
+if (el) {
+  const bg = getComputedStyle(el).backgroundColor || '';
+  if (bg === 'transparent' || bg.endsWith('0)') ) console.warn('Dynamic container background is transparent — apply host theme fallback');
+}
+```
+
+- Troubleshooting pointers:
+  - If the form appears visually cut off or text overlaps with routed page content, verify `min-width: 0` / `min-height: 0` exist on `.app-shell__body`, `.acp-workspace`, and `.acp-workspace__stage`.
+  - If the form shows the routed page through it, inspect parent elements for `backdrop-filter`, `mix-blend-mode`, `opacity`, or `isolation` rules.
+  - If only parts of the form are transparent (for example header is opaque but form body is not), check for host-level utility classes that set `background: none` on generic selectors like `.panel, .card` — narrow these selectors or override them for `acp-*` selectors.
+
+- Add verification items (update checklist):
+  - [ ] Dynamic container surface has an opaque background (not transparent).
+  - [ ] No ancestor element applies `opacity`, `mix-blend-mode`, or `backdrop-filter` that affects the form surface.
+  - [ ] `.acp-workspace__form-layer` remains confined inside `.acp-workspace__stage` and does not become a full-viewport layer.
+
+  - [ ] Every dynamic form is resizable and reflects changes to its `formWidth`.
+  - [ ] Buddy-mounted workspaces render inside the dynamic container and respect the container's `formWidth` (no full-stage takeover).
+
 ## Non-goals
 
 Do not:
@@ -578,7 +648,110 @@ For the current expected host behavior, multiple `/form ...` requests should ope
   - `acp-dynamic-container` auto-listens for bubbled `acp-form-requested` on its shared parent (or `document`) and opens itself when a valid `formSpec` is received.
   - Even with auto-listening, mount the container inside `.acp-workspace__stage`, aligned to the stage's left edge.
 
+Dev note: if using Option B, render one host `<acp-dynamic-container>` inside `.acp-workspace__stage` (not on `document.body`) and let it auto-open. This prevents the package from mounting the container outside the intended stage and avoids unexpected stacking/opacity contexts.
+
+Mount timing helper (robust host attachment):
+
+```js
+document.addEventListener('acp-custom-host-ready', (ev) => {
+  const { formId, hostSelector } = ev.detail || {};
+  if (!formId || !hostSelector) return;
+  const tryFind = () => document.querySelector(hostSelector);
+  let mount = tryFind();
+  if (!mount) {
+    // retry shortly to account for microtask timing
+    setTimeout(() => {
+      mount = tryFind();
+      if (!mount) console.error('ACP host mount point not found for', hostSelector);
+      else mount.appendChild(createBuddy(formId));
+    }, 80);
+  } else {
+    mount.appendChild(createBuddy(formId));
+  }
+});
+
+function createBuddy(formId) {
+  const el = document.createElement('buddy-enrol-workspace-surface');
+  el.setAttribute('data-acp-mounted-form-id', formId);
+  return el;
+}
+```
+
 Option A is the recommended integration path for the tested host state because the host owns the collection of open forms and their independent close behavior.
+
+### Host-mount hook (Buddy integration)
+
+The package emits an opt-in hook event when a dynamic container opens so host applications can mount richer host-side components (for example the Buddy workspace surface) directly into the container. This keeps the package lightweight but allows the package to provide a stable mount point for host renderers.
+
+- Event: `acp-custom-host-ready` (bubbles, composed)
+- Event detail: `{ formId: string, hostSelector: string }` where `hostSelector` is a selector string pointing at an element the host can use as a mount point inside the opened dynamic container.
+
+Behavior and recommended host wiring:
+
+- Listen for `acp-custom-host-ready` on the shell or `document`.
+- When received, locate the opened dynamic container and then find the mount point using `detail.hostSelector`.
+- Create and append your host component (Angular element or plain DOM) into that mount point. Use `pointer-events` and focus management as needed.
+
+Example (vanilla JS mounting an Angular element named `buddy-enrol-workspace-surface`):
+
+```ts
+// Run once at app startup (after importing '@acp/chat-panel')
+document.addEventListener('acp-custom-host-ready', (ev: CustomEvent) => {
+  const { formId, hostSelector } = ev.detail || {};
+  if (!formId || !hostSelector) return;
+
+  // Find the first matching mount point in the open container
+  const mount = document.querySelector(hostSelector);
+  if (!mount) return;
+
+  // Create and mount the Buddy element (this element must be available
+  // in the host app, for example as an Angular standalone component
+  // exposed as a custom element or a simple DOM renderer).
+  const buddy = document.createElement('buddy-enrol-workspace-surface');
+  buddy.setAttribute('data-acp-mounted-form-id', formId);
+  // Optional: wire events from Buddy back into host logic
+  buddy.addEventListener('buddy-submit', (e) => console.log('Buddy submitted', e.detail));
+
+  // Clear previous mount if desired, then mount
+  mount.innerHTML = '';
+  mount.appendChild(buddy);
+});
+```
+
+If you're mounting an Angular component, register it as a custom element (Angular Elements) or bootstrap it into the container via `ViewContainerRef`/`createComponent` inside a host-managed anchor element.
+
+Mount point details
+
+- The package will dispatch the hook with a `hostSelector` shaped like `[data-acp-custom-host="{formId}"]`. Hosts should create or target that attribute when mounting.
+- The host may also choose to create the mount element manually when it renders `<acp-dynamic-container>` instances. Example markup inside the container slot (host-rendered template):
+
+```html
+<div class="acp-form-shell" data-acp-custom-host="student-enroll"></div>
+```
+
+Buddy test example
+
+1. Ensure your host app imports the package once (for example in `src/main.ts`):
+
+```ts
+import '@acp/chat-panel';
+```
+
+2. Add the `acp-custom-host-ready` listener (example above) and make sure the Buddy element (`buddy-enrol-workspace-surface`) is registered or available in the host.
+
+3. Open the chat and send the recommended student enroll trigger:
+
+```
+/form create enroll student form
+```
+
+4. Verify:
+- `<acp-dynamic-container>` opens from the stage's left edge next to the chat.
+- Host receives an `acp-custom-host-ready` event with `formId: 'student-enroll'`.
+- The host locates the mount point (`detail.hostSelector`) and mounts `buddy-enrol-workspace-surface` into it.
+- The Buddy UI renders inside the dynamic container and can submit via its own events. The dynamic container still emits `acp-submitted` when host forwards final values (host may choose to translate Buddy events into `acp-submitted`).
+
+If you plan to test with a blank application, the above wiring is sufficient: the package provides the hook, and your blank host is responsible for registering Buddy and attaching it when `acp-custom-host-ready` fires.
 
 ### Local run configuration
 

@@ -110,6 +110,23 @@ export class MockAgentHarnessService {
 
       return of(failedResponse).pipe(delay(550));
     } else {
+      // handle natural language triggers for demo: if user asks to
+      // create a student/enroll form, return a structured `surface` block
+      // (preferred) instead of a raw `/form` text command.
+      if (lowerPrompt.includes('create') && lowerPrompt.includes('student')) {
+        const surface = {
+          type: 'student-enrol-form',
+          id: 'surface_create_student',
+          title: 'Create Student',
+          formId: 'create-student',
+          submitAction: 'student.enrol.submit',
+          correlationId: 'surface_create_student',
+          data: { name: '', dob: '', gender: '', courseId: '' },
+          schema: { fields: [ { id: 'name', label: 'Name', type: 'text', required: true } ] }
+        };
+        blocks.push({ type: 'text', text: 'Opening student create form.' });
+        blocks.push({ type: 'surface', surface });
+      } else {
       blocks.push(
         { type: 'text', text: 'Prompt delivered as-is to the harness. No local intent parsing was applied.' },
         {

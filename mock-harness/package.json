@@ -1,0 +1,19 @@
+{
+  "name": "ctng4-mock-harness",
+  "private": true,
+  "scripts": {
+    "mock-harness": "npx tsx server.ts",
+    "dev": "npm run mock-harness",
+    "dev:live": "MOCK_HARNESS_MODE=live npm run mock-harness",
+    "verify": "npx ts-node --transpile-only verify-fees-navigation.ts"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.7",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}

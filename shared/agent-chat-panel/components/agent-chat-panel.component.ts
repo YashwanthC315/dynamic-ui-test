@@ -420,6 +420,22 @@ export class AgentChatPanelComponent implements AfterViewChecked, OnInit {
       });
     }
 
+    // If the transport returned a structured surface payload, forward it
+    // to the host via `agentEvent` so the host can open workspace surfaces
+    // (for example by pushing into its `openForms` / `dynamicForms` state).
+    if ((response as any).surface) {
+      try {
+        this.agentEvent.emit({
+          type: 'open_surface',
+          surface: (response as any).surface,
+          requestId: response.requestId,
+        });
+      } catch (err) {
+        // swallow errors to avoid breaking normal response handling
+        console.error('Failed to emit open_surface agentEvent', err);
+      }
+    }
+
     this.status.emit(`Agent response ${response.status}.`);
     this.restoreComposerFocus();
   }

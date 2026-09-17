@@ -1,0 +1,8 @@
+config.json
+# SQLite conversation data is local-only and must not be committed.
+data/*.sqlite
+data/*.sqlite3
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/*.sqlite3-wal
+data/*.sqlite3-shm
