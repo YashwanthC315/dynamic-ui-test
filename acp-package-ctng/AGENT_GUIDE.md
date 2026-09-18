@@ -254,28 +254,37 @@ export class AppShellComponent {
 
 ---
 
+---
+
 ## Step 3: Add Launch Button to the Existing Sidebar
 
-**Crucial Integration Rule:**
-Do **NOT** fabricate or paste a new `<aside class="app-sidebar">` into `app.component.html` if your application already has an existing navigation bar or sidebar component.
+**Crucial Integration Rules:**
+1. **Do NOT fabricate or paste a new `<aside class="app-sidebar">`** into `app.component.html` if your application already has an existing navigation bar or sidebar component.
+2. **Place the button at the BOTTOM of the sidebar**: The AI launch button must be positioned at the **bottom (footer) of the sidebar navigation**, NOT at the top of the menu links.
 
-1. **Locate the existing navigation/sidebar component**:
-   - Search your codebase for components or templates managing navigation: e.g. `<app-sidebar>`, `<app-nav>`, `<app-navigation>`, `<nav class="sidebar">`, `<ul class="nav">`, or layout wrappers.
-2. **Add the toggle button into the existing menu items/actions list**:
-   ```html
-   <button 
-     type="button" 
-     class="sidebar-chat-btn" 
-     title="AI Assistant"
-     (click)="toggleChat()">
-     <span class="icon">🤖</span>
-     <span class="label">AI</span>
-   </button>
-   ```
-   *Style the button using your host application's existing sidebar button/item styles.*
-3. **State Communication**:
-   - If the sidebar is in the same component as the chat state (`chatOpen`), directly call `toggleChat()`.
-   - If the sidebar is a separate child component (e.g. `<app-sidebar>`), either emit an `@Output() toggleChat = new EventEmitter<void>()` to the parent shell, or use a shared UI state service to toggle `chatOpen`.
+### Placement & Markup:
+Locate the existing navigation/sidebar component (e.g. `<app-sidebar>`, `<app-nav>`, `<nav class="sidebar">`, `<ul class="nav">`, or layout sidebar template).
+
+Add the button at the **bottom of the sidebar** (e.g., inside a sidebar footer or as the last item using `margin-top: auto`):
+
+```html
+<!-- At the bottom of the existing sidebar navigation -->
+<div class="sidebar-chat-launcher" style="margin-top: auto; padding: 10px;">
+  <button 
+    type="button" 
+    class="sidebar-chat-btn" 
+    title="AI Assistant"
+    (click)="toggleChat()">
+    <span class="icon">🤖</span>
+    <span class="label">AI</span>
+  </button>
+</div>
+```
+*Note: If the sidebar container is a flex column (`display: flex; flex-direction: column`), adding `margin-top: auto` cleanly pushes the button to the bottom below all navigation links.*
+
+### State Communication:
+- If the sidebar template is inside the shell component where `chatOpen` is declared, directly bind `(click)="toggleChat()"`.
+- If the sidebar is an isolated child component (e.g. `<app-sidebar>`), either emit an `@Output() toggleChat = new EventEmitter<void>()` to the parent shell, or inject a shared UI state service to toggle `chatOpen`.
 
 *Do not create any floating action buttons or modal launchers.*
 
@@ -292,6 +301,7 @@ Locate where `<router-outlet></router-outlet>` resides in your application shell
 Existing Header (intact)
 -------------------------------------------------------------------------------
 [Existing Sidebar] | [ACP Chat Panel (when open)] | [ACP Stage: router-outlet]
+[AI Button at Bot] | (full screen length)         | (scrolls, no double scroll)
 -------------------------------------------------------------------------------
 Existing Footer (intact)
 ```
@@ -300,14 +310,75 @@ Existing Footer (intact)
 
 #### Option A: Modern Angular (Angular 17+ with `@if` and `@for`)
 ```html
-<div class="existing-app-body">
-  <!-- Existing sidebar (remains in place with AI button inside it) -->
-  <app-sidebar></app-sidebar>
+<div class="app-shell">
+  <!-- Optional existing app header (if present) -->
 
-  <!-- ACP Workspace: wraps docked chat and routed stage -->
-  <div class="acp-workspace">
-    @if (chatOpen) {
-      <div class="acp-workspace__chat">
+  <div class="app-shell__body">
+    <!-- Existing sidebar (with AI button positioned at the bottom) -->
+    <app-sidebar></app-sidebar>
+
+    <!-- ACP Workspace: wraps docked chat and routed stage -->
+    <div class="acp-workspace">
+      @if (chatOpen) {
+        <div class="acp-workspace__chat">
+          <acp-chat-panel
+            dock="left"
+            [open]="chatOpen"
+            [width]="chatWidth"
+            [min-width]="260"
+            [max-width]="640"
+            [messages]="messages"
+            (acp-open-change)="chatOpen = $any($event).detail"
+            (acp-width-change)="chatWidth = $any($event).detail"
+            (acp-message-sent)="onChatMessage($any($event).detail)"
+            (acp-form-requested)="onFormRequested($any($event).detail)">
+          </acp-chat-panel>
+        </div>
+      }
+
+      <!-- Stage Area: Routed application content + dynamic form layer -->
+      <section class="acp-workspace__stage">
+        <main class="acp-workspace__content">
+          <router-outlet></router-outlet>
+        </main>
+
+        <!-- Only render form layer when forms are open (prevents ghost scrollbars) -->
+        @if (openForms.length > 0) {
+          <div class="acp-workspace__form-layer">
+            @for (form of openForms; track form.id) {
+              <acp-dynamic-container
+                class="acp-workspace__form"
+                [open]="true"
+                [title]="form.title"
+                [formWidth]="form.formWidth"
+                [minFormWidth]="320"
+                [maxFormWidth]="760"
+                [formSpec]="form.formSpec"
+                (acp-form-width-change)="onFormWidthChange(form.id, $any($event).detail)"
+                (acp-submitted)="onFormSubmitted(form.id, $any($event).detail)"
+                (acp-cancelled)="closeForm(form.id)">
+              </acp-dynamic-container>
+            }
+          </div>
+        }
+      </section>
+    </div>
+  </div>
+</div>
+```
+
+#### Option B: Classic / NgModule Angular (`*ngIf` and `*ngFor` - Angular 4–16)
+```html
+<div class="app-shell">
+  <!-- Optional existing app header (if present) -->
+
+  <div class="app-shell__body">
+    <!-- Existing sidebar (with AI button positioned at the bottom) -->
+    <app-sidebar></app-sidebar>
+
+    <!-- ACP Workspace: wraps docked chat and routed stage -->
+    <div class="acp-workspace">
+      <div class="acp-workspace__chat" *ngIf="chatOpen">
         <acp-chat-panel
           dock="left"
           [open]="chatOpen"
@@ -315,24 +386,23 @@ Existing Footer (intact)
           [min-width]="260"
           [max-width]="640"
           [messages]="messages"
-          (acp-open-change)="chatOpen = $any($event).detail"
-          (acp-width-change)="chatWidth = $any($event).detail"
-          (acp-message-sent)="onChatMessage($any($event).detail)"
-          (acp-form-requested)="onFormRequested($any($event).detail)">
+          (acp-open-change)="chatOpen = $event.detail"
+          (acp-width-change)="chatWidth = $event.detail"
+          (acp-message-sent)="onChatMessage($event.detail)"
+          (acp-form-requested)="onFormRequested($event.detail)">
         </acp-chat-panel>
       </div>
-    }
 
-    <!-- Stage Area: Routed application content + dynamic form layer -->
-    <section class="acp-workspace__stage">
-      <main class="acp-workspace__content">
-        <router-outlet></router-outlet>
-      </main>
+      <!-- Stage Area: Routed application content + dynamic form layer -->
+      <section class="acp-workspace__stage">
+        <main class="acp-workspace__content">
+          <router-outlet></router-outlet>
+        </main>
 
-      <!-- Dynamic Form & Workspace layer directly beside chat -->
-      <div class="acp-workspace__form-layer">
-        @for (form of openForms; track form.id) {
+        <!-- Only render form layer when forms are open (prevents ghost scrollbars) -->
+        <div class="acp-workspace__form-layer" *ngIf="openForms.length">
           <acp-dynamic-container
+            *ngFor="let form of openForms; trackBy: trackFormById"
             class="acp-workspace__form"
             [open]="true"
             [title]="form.title"
@@ -340,62 +410,13 @@ Existing Footer (intact)
             [minFormWidth]="320"
             [maxFormWidth]="760"
             [formSpec]="form.formSpec"
-            (acp-form-width-change)="onFormWidthChange(form.id, $any($event).detail)"
-            (acp-submitted)="onFormSubmitted(form.id, $any($event).detail)"
+            (acp-form-width-change)="onFormWidthChange(form.id, $event.detail)"
+            (acp-submitted)="onFormSubmitted(form.id, $event.detail)"
             (acp-cancelled)="closeForm(form.id)">
           </acp-dynamic-container>
-        }
-      </div>
-    </section>
-  </div>
-</div>
-```
-
-#### Option B: Classic / NgModule Angular (`*ngIf` and `*ngFor` - Angular 4–16)
-```html
-<div class="existing-app-body">
-  <!-- Existing sidebar (remains in place with AI button inside it) -->
-  <app-sidebar></app-sidebar>
-
-  <!-- ACP Workspace: wraps docked chat and routed stage -->
-  <div class="acp-workspace">
-    <div class="acp-workspace__chat" *ngIf="chatOpen">
-      <acp-chat-panel
-        dock="left"
-        [open]="chatOpen"
-        [width]="chatWidth"
-        [min-width]="260"
-        [max-width]="640"
-        [messages]="messages"
-        (acp-open-change)="chatOpen = $event.detail"
-        (acp-width-change)="chatWidth = $event.detail"
-        (acp-message-sent)="onChatMessage($event.detail)"
-        (acp-form-requested)="onFormRequested($event.detail)">
-      </acp-chat-panel>
+        </div>
+      </section>
     </div>
-
-    <!-- Stage Area: Routed application content + dynamic form layer -->
-    <section class="acp-workspace__stage">
-      <main class="acp-workspace__content">
-        <router-outlet></router-outlet>
-      </main>
-
-      <div class="acp-workspace__form-layer">
-        <acp-dynamic-container
-          *ngFor="let form of openForms; trackBy: trackFormById"
-          class="acp-workspace__form"
-          [open]="true"
-          [title]="form.title"
-          [formWidth]="form.formWidth"
-          [minFormWidth]="320"
-          [maxFormWidth]="760"
-          [formSpec]="form.formSpec"
-          (acp-form-width-change)="onFormWidthChange(form.id, $event.detail)"
-          (acp-submitted)="onFormSubmitted(form.id, $event.detail)"
-          (acp-cancelled)="closeForm(form.id)">
-        </acp-dynamic-container>
-      </div>
-    </section>
   </div>
 </div>
 ```
@@ -404,16 +425,38 @@ Existing Footer (intact)
 
 ### Layout CSS (Apply in Global Stylesheet)
 
+> [!IMPORTANT]
+> **1. Chat Full-Length & Input Position**: The chat message container expands with `flex: 1 1 auto` to keep the composer input box pinned at the **bottom** of the panel. If the input box appears at the top, it means `.app-shell` or `.acp-workspace` lacks full viewport height. Always ensure `height: 100vh; overflow: hidden;` is on the shell container.
+>
+> **2. Preventing Excess / Double Scrollbars**:
+> - Apply `overflow: hidden` to `.app-shell` and `.app-shell__body` so the browser window (`body`) does not scroll.
+> - Only `.acp-workspace__content` should scroll vertically (`overflow-y: auto; overflow-x: hidden`).
+> - Use `*ngIf="openForms.length"` on `.acp-workspace__form-layer` so an empty form layer never introduces ghost horizontal/vertical scrollbars.
+
 ```css
-/* Shell flex body container (adapt to your app's body class or use as default) */
-.app-shell,
-.app-shell__body {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
+/* 1. Root & Shell Height Propagation (Pins text input to bottom) */
+html, body {
+  height: 100%;
+  margin: 0;
 }
 
-/* Workspace container: fills remaining horizontal space next to sidebar */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden; /* Prevents outer window scrollbar */
+}
+
+.app-shell__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden; /* Contains inner layout */
+}
+
+/* 2. Workspace container: fills remaining horizontal space next to sidebar */
 .acp-workspace {
   display: flex;
   flex: 1 1 auto;
@@ -424,21 +467,26 @@ Existing Footer (intact)
   background: var(--acp-stage-bg);
 }
 
-/* Chat Column: full height, docked next to sidebar */
+/* 3. Chat Column: full height, docked next to sidebar */
 .acp-workspace__chat {
   flex: 0 0 auto;
   min-width: 0;
   min-height: 0;
   height: 100%;
   align-self: stretch;
+  display: flex;
+  flex-direction: column;
 }
 
 .acp-workspace__chat > acp-chat-panel {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   height: 100%;
+  min-height: 0;
 }
 
-/* Stage Area: owns routed content and dynamic form overlay */
+/* 4. Stage Area: owns routed content and dynamic form overlay */
 .acp-workspace__stage {
   position: relative;
   display: flex;
@@ -448,23 +496,24 @@ Existing Footer (intact)
   overflow: hidden;
 }
 
-/* Routed Page Content: MUST NOT reflow on resize; it scrolls horizontally */
+/* 5. Routed Page Content: Single controlled vertical scroll; no horizontal spill */
 .acp-workspace__content {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   width: 100%;
 }
 
-/* Crucial for Angular 4-16: ensures routed component tags stretch 100% width and do not shrink-wrap to the left */
+/* Ensures routed component tags stretch 100% width and do not shrink-wrap to the left */
 .acp-workspace__content > * {
   display: block;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Dynamic form layer: sits directly adjacent to chat */
+/* 6. Dynamic form layer: sits directly adjacent to chat */
 .acp-workspace__form-layer {
   position: absolute;
   top: 0;
@@ -477,6 +526,10 @@ Existing Footer (intact)
   justify-content: flex-start;
   overflow-x: auto;
   pointer-events: none; /* allows clicking routed content where form is absent */
+}
+
+.acp-workspace__form-layer:empty {
+  display: none !important;
 }
 
 .acp-workspace__form {
@@ -562,10 +615,11 @@ The Action Area records post-commit activity outcomes (success, warnings, errors
 
 Before considering the task complete, verify every item:
 
-- [ ] **Real Sidebar Button**: The AI button is placed inside the application's actual existing sidebar navigation/menu (not in a newly fabricated, floating, or isolated container).
+- [ ] **Sidebar Button at Bottom**: The AI button is placed at the **bottom** of the application's sidebar navigation (not at the top).
+- [ ] **Chat Input at Bottom (Full Height)**: The chat panel spans the full viewport height and the message input box is pinned at the **bottom** of the screen.
+- [ ] **No Excess/Double Scroll**: Only `.acp-workspace__content` scrolls vertically; there is no outer window scrollbar and no phantom scrollbar when dynamic forms are closed.
 - [ ] **Home/Dashboard Layout Integrity**: Routed dashboard/home components retain their full original width; cards and elements are NOT squished or cramped to the left.
 - [ ] **Docking Order**: Chat renders directly next to sidebar (left side of content, NOT on the right).
-- [ ] **Full Height**: Chat spans 100% of the workspace body height.
 - [ ] **No Overlay for Chat**: Chat pushes the content container; it does not float over it.
 - [ ] **No Page Reflow**: Resizing the chat narrows the content container and enables scrolling if needed; it does NOT reflow internal dashboard cards/grids.
 - [ ] **Dynamic Forms**: Typing `/form create enroll student form` opens `<acp-dynamic-container>` docked next to chat inside the stage.
