@@ -620,78 +620,86 @@ General goals:
 - Receive agent responses (or harness-sent events) and push them into the chat panel's message stream.
 - Preserve existing harness semantics so behaviour matches current development tooling.
 
-Example integration (Angular shell):
+The harness implementation is server-side. Do **not** import `mock-harness/live-client.ts` into the browser bundle; it uses Node `http`/`https` APIs. Connect through the harness HTTP endpoint or the browser-safe client already used by the host application.
 
-1. Create or reuse a small service that adapts the harness client API to your shell.
-
-```typescript
-// src/app/services/agent-harness.service.ts
-import { Injectable } from '@angular/core';
-// adjust import to your harness client (see mock-harness/live-client.ts)
-import { LiveClient } from '../../../mock-harness/live-client';
-
-@Injectable({ providedIn: 'root' })
-export class AgentHarnessService {
-  private client = new LiveClient();
-
-  sendMessage(text: string) {
-    return this.client.send({ role: 'user', text });
-  }
-
-  onMessage(cb: (msg: any) => void) {
-    return this.client.on('message', cb);
-  }
-}
-```
-
-2. Wire the service to the shell so the chat panel uses the harness when present:
+1. Wire the browser client to the shell so the chat panel uses the harness endpoint when present:
 
 ```typescript
 // in AppShellComponent (or equivalent)
-constructor(private harness: AgentHarnessService) {}
+constructor(private http: HttpClient) {}
+
+private readonly harnessUrl = '/api/agent/chat';
 
 ngOnInit() {
-  // subscribe to harness messages and append to local `messages`
-  this.harness.onMessage((m) => {
-    const incoming = { id: String(Date.now()), role: m.role || 'assistant', text: m.text };
-    this.messages = [...this.messages, incoming];
-  });
 }
 
 onChatMessage(text: string) {
   const userMsg = { id: String(Date.now()), role: 'user', text };
   this.messages = [...this.messages, userMsg];
 
-  // Prefer harness if available, otherwise forward to your real agent API
-  if (this.harness) {
-    this.harness.sendMessage(text).catch((err) => console.error(err));
-  } else {
-    // fallback: call your agent API
-  }
+  this.http.post<{ text: string }>(this.harnessUrl, {
+    userText: text,
+    contextRoute: location.pathname,
+  }).subscribe({
+    next: (reply) => this.messages = [
+      ...this.messages,
+      { id: String(Date.now()), role: 'assistant', text: reply.text, timestamp: new Date() },
+    ],
+    error: () => this.messages = [
+      ...this.messages,
+      { id: String(Date.now()), role: 'error', text: 'The agent is unavailable.', timestamp: new Date() },
+    ],
+  });
 }
 ```
 
-3. DOM events alternative (Web Components friendly)
+2. DOM events alternative (Web Components friendly)
 
-If you prefer to keep the shell decoupled from Angular services, use DOM events to bridge the chat panel and harness. The chat panel emits `acp-message-sent` events; listen and forward to the harness, and dispatch synthetic `acp-message-received` events when the harness responds.
+If you prefer to keep the shell decoupled from Angular services, listen for `acp-message-sent` and call the browser-safe harness endpoint. Append the response to the `messages` property; do not dispatch an undocumented `acp-message-received` event.
 
 ```typescript
-document.addEventListener('acp-message-sent', (ev: any) => {
-  const text = ev.detail;
-  // forward to harness
-  liveClient.send({ text });
-});
-
-liveClient.on('message', (m) => {
-  const event = new CustomEvent('acp-message-received', { detail: m });
-  document.dispatchEvent(event);
+document.addEventListener('acp-message-sent', async (ev: any) => {
+  const response = await fetch('/api/agent/chat', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ userText: ev.detail, contextRoute: location.pathname }),
+  });
+  const reply = await response.json();
+  // append reply to the host `messages` input
 });
 ```
 
 Notes:
-- Inspect `mock-harness/` to reuse existing client APIs (`live-client.ts`, `server.ts`).
+- Inspect `mock-harness/` to match the server request and response contract (`live-client.ts`, `server.ts`), but keep Node-only files on the server.
 - Keep the message shape compatible with the chat panel `messages` input (role/text/timestamp).
 - Using the harness makes local development and automated tests behave identically to production agent integrations.
+
+### Required Persistent Workspace Composition
+
+The integration agent must keep these surfaces mounted while the dashboard/home route remains underneath:
+
+```html
+<div class="acp-workspace">
+  <div class="acp-workspace__chat" *ngIf="chatOpen">
+    <acp-chat-panel [open]="true" [width]="chatWidth" [messages]="messages"></acp-chat-panel>
+  </div>
+
+  <section class="acp-workspace__stage">
+    <main class="acp-workspace__content"><router-outlet></router-outlet></main>
+
+    <div class="acp-workspace__surface-layer" *ngIf="workspaceOpen || actionsOpen">
+      <div class="acp-workspace__surface" *ngIf="workspaceOpen">
+        <buddy-enrol-workspace-surface></buddy-enrol-workspace-surface>
+      </div>
+      <div class="acp-workspace__actions" *ngIf="actionsOpen">
+        <acp-actions-pane [items]="activityItems"></acp-actions-pane>
+      </div>
+    </div>
+  </section>
+</div>
+```
+
+The `acp-workspace__surface-layer` is an overlay inside the stage, not a replacement for routed content. `workspaceOpen` and `actionsOpen` are independent state values: opening Actions must leave `workspaceOpen` true. Do not render the workspace or Actions pane as a route, modal, right-side drawer, or mutually exclusive tab.
 
 **UI Requirements & Buttons (prevent common regressions)**
 
@@ -716,6 +724,8 @@ html, body { height: 100%; margin: 0; }
 - **Resize behaviour**: Resizing the panel emits `acp-width-change` with the new width (number). The host should apply the workspace layout rules so routed content shrinks without reflow.
 
 - **Form triggers and dynamic container**: Typing `/form ...` triggers `acp-form-requested` with a normalized `formSpec`. The `acp-dynamic-container` listens for `acp-form-requested` and opens automatically when present.
+
+- **Workspace and Actions persistence**: Keep the workspace and Actions pane mounted over the stage. The Actions pane is an adjacent column to the workspace, not a replacement. Use the package classes `.acp-workspace__surface-layer`, `.acp-workspace__surface`, and `.acp-workspace__actions`.
 
 - **Design tokens & styles loaded**: Double-check `acp-tokens.css` and `acp-chat-panel.css` are included globally so header, buttons, and layout styles render correctly (missing styles often cause spacing/height regressions).
 
