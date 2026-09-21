@@ -611,6 +611,91 @@ The Action Area records post-commit activity outcomes (success, warnings, errors
 
 ---
 
+## Step 7: Connect to Agent Harness (optional)
+
+If your repository includes an agent harness or mock agent (for example the `mock-harness/` in this workspace), wire the chat panel to that harness so messages flow exactly as they do in local development and tests.
+
+General goals:
+- Forward messages sent from the chat UI to the harness/backend agent API.
+- Receive agent responses (or harness-sent events) and push them into the chat panel's message stream.
+- Preserve existing harness semantics so behaviour matches current development tooling.
+
+Example integration (Angular shell):
+
+1. Create or reuse a small service that adapts the harness client API to your shell.
+
+```typescript
+// src/app/services/agent-harness.service.ts
+import { Injectable } from '@angular/core';
+// adjust import to your harness client (see mock-harness/live-client.ts)
+import { LiveClient } from '../../../mock-harness/live-client';
+
+@Injectable({ providedIn: 'root' })
+export class AgentHarnessService {
+  private client = new LiveClient();
+
+  sendMessage(text: string) {
+    return this.client.send({ role: 'user', text });
+  }
+
+  onMessage(cb: (msg: any) => void) {
+    return this.client.on('message', cb);
+  }
+}
+```
+
+2. Wire the service to the shell so the chat panel uses the harness when present:
+
+```typescript
+// in AppShellComponent (or equivalent)
+constructor(private harness: AgentHarnessService) {}
+
+ngOnInit() {
+  // subscribe to harness messages and append to local `messages`
+  this.harness.onMessage((m) => {
+    const incoming = { id: String(Date.now()), role: m.role || 'assistant', text: m.text };
+    this.messages = [...this.messages, incoming];
+  });
+}
+
+onChatMessage(text: string) {
+  const userMsg = { id: String(Date.now()), role: 'user', text };
+  this.messages = [...this.messages, userMsg];
+
+  // Prefer harness if available, otherwise forward to your real agent API
+  if (this.harness) {
+    this.harness.sendMessage(text).catch((err) => console.error(err));
+  } else {
+    // fallback: call your agent API
+  }
+}
+```
+
+3. DOM events alternative (Web Components friendly)
+
+If you prefer to keep the shell decoupled from Angular services, use DOM events to bridge the chat panel and harness. The chat panel emits `acp-message-sent` events; listen and forward to the harness, and dispatch synthetic `acp-message-received` events when the harness responds.
+
+```typescript
+document.addEventListener('acp-message-sent', (ev: any) => {
+  const text = ev.detail;
+  // forward to harness
+  liveClient.send({ text });
+});
+
+liveClient.on('message', (m) => {
+  const event = new CustomEvent('acp-message-received', { detail: m });
+  document.dispatchEvent(event);
+});
+```
+
+Notes:
+- Inspect `mock-harness/` to reuse existing client APIs (`live-client.ts`, `server.ts`).
+- Keep the message shape compatible with the chat panel `messages` input (role/text/timestamp).
+- Using the harness makes local development and automated tests behave identically to production agent integrations.
+
+
+---
+
 ## Verification Checklist
 
 Before considering the task complete, verify every item:
