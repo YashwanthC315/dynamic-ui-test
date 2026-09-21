@@ -693,6 +693,39 @@ Notes:
 - Keep the message shape compatible with the chat panel `messages` input (role/text/timestamp).
 - Using the harness makes local development and automated tests behave identically to production agent integrations.
 
+**UI Requirements & Buttons (prevent common regressions)**
+
+Hosts must ensure the chat panel renders exactly as intended. Confirm the following during integration to avoid the small UI regressions seen previously (panel not full-height, misplaced input, missing buttons):
+
+- **Host shell height propagation**: Ensure your top-level shell applies full viewport height so the chat panel can occupy full height and pin the composer to the bottom.
+
+```css
+/* required in host global stylesheet */
+html, body { height: 100%; margin: 0; }
+.app-shell { height: 100vh; min-height: 0; overflow: hidden; display:flex; flex-direction:column; }
+.app-shell__body { display:flex; flex:1 1 auto; min-height:0; overflow:hidden; }
+.acp-workspace { display:flex; flex:1 1 auto; min-height:0; overflow:hidden; }
+```
+
+- **Buttons & actions present on the panel**: The shipped panel exposes three header action buttons and the composer controls. These dispatch DOM events the host should listen for if needed:
+  - New chat: header button `data-action="new"` → dispatches `acp-new-chat`.
+  - Help: header button `data-action="help"` → dispatches `acp-help`.
+  - Close: header button `data-action="close"` → toggles closed and dispatches `acp-open-change` with `detail: false`.
+  - Send: composer send button dispatches `acp-message-sent` with the message text.
+
+- **Resize behaviour**: Resizing the panel emits `acp-width-change` with the new width (number). The host should apply the workspace layout rules so routed content shrinks without reflow.
+
+- **Form triggers and dynamic container**: Typing `/form ...` triggers `acp-form-requested` with a normalized `formSpec`. The `acp-dynamic-container` listens for `acp-form-requested` and opens automatically when present.
+
+- **Design tokens & styles loaded**: Double-check `acp-tokens.css` and `acp-chat-panel.css` are included globally so header, buttons, and layout styles render correctly (missing styles often cause spacing/height regressions).
+
+Quick integration checklist:
+- Add the package styles to `angular.json` or import into `src/styles.css`.
+- Verify `.app-shell` and `.acp-workspace` height rules exist in host CSS.
+- Confirm header buttons and composer exist visually after integration and fires the expected DOM events.
+- Confirm `acp-form-requested`, `acp-width-change`, `acp-open-change`, `acp-message-sent` are observed by host when exercising chat actions.
+
+
 
 ---
 
