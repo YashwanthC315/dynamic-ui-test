@@ -242,7 +242,14 @@ export class AppShellComponent {
         actions: [{ id: 'focus_record', label: 'Focus' }, { id: 'copy_names', label: 'Copy' }],
       },
     ];
+    this.actionsOpen = true;
     this.closeForm(formId);
+  }
+
+  onActionsRequested(detail: any): void {
+    if (!detail?.item) return;
+    this.activityItems = [...this.activityItems, detail.item];
+    this.actionsOpen = detail.open === true;
   }
 
   // TrackBy helper for ngFor
@@ -331,7 +338,8 @@ Existing Footer (intact)
             (acp-open-change)="chatOpen = $any($event).detail"
             (acp-width-change)="chatWidth = $any($event).detail"
             (acp-message-sent)="onChatMessage($any($event).detail)"
-            (acp-form-requested)="onFormRequested($any($event).detail)">
+            (acp-form-requested)="onFormRequested($any($event).detail)"
+            (acp-actions-requested)="onActionsRequested($any($event).detail)">
           </acp-chat-panel>
         </div>
       }
@@ -389,7 +397,8 @@ Existing Footer (intact)
           (acp-open-change)="chatOpen = $event.detail"
           (acp-width-change)="chatWidth = $event.detail"
           (acp-message-sent)="onChatMessage($event.detail)"
-          (acp-form-requested)="onFormRequested($event.detail)">
+          (acp-form-requested)="onFormRequested($event.detail)"
+          (acp-actions-requested)="onActionsRequested($event.detail)">
         </acp-chat-panel>
       </div>
 
@@ -432,6 +441,20 @@ Existing Footer (intact)
 > - Apply `overflow: hidden` to `.app-shell` and `.app-shell__body` so the browser window (`body`) does not scroll.
 > - Only `.acp-workspace__content` should scroll vertically (`overflow-y: auto; overflow-x: hidden`).
 > - Use `*ngIf="openForms.length"` on `.acp-workspace__form-layer` so an empty form layer never introduces ghost horizontal/vertical scrollbars.
+
+**Non-negotiable height rule:** The workspace row must be the flex-growing body below any application header. Do not place it in a content-sized wrapper, and do not put a footer inside `.app-shell__body`. The package styles include defensive root rules, but the host shell must preserve this hierarchy:
+
+```text
+html/body/app-root (100% height)
+  app-shell (column, 100% height)
+    header (fixed or natural height)
+    app-shell__body (flex: 1 1 0, min-height: 0)
+      existing sidebar | acp-workspace (flex: 1 1 0, min-height: 0)
+```
+
+The sidebar, chat, stage, and routed dashboard must all be children of `.app-shell__body`. A footer belongs after `.app-shell__body`, not inside it. This is required for the chat column and composer to reach the bottom of the viewport.
+
+The package includes a fallback for hosts whose root height chain is not yet established: `.acp-workspace` uses `height: calc(100vh - var(--acp-app-header-height))`. The default is `42px`, matching the compact CampusTrack header in the reference layout. If the host header differs, define `--app-header-height` globally before loading the ACP styles.
 
 ```css
 /* 1. Root & Shell Height Propagation (Pins text input to bottom) */
@@ -725,6 +748,8 @@ html, body { height: 100%; margin: 0; }
 
 - **Form triggers and dynamic container**: Typing `/form ...` triggers `acp-form-requested` with a normalized `formSpec`. The `acp-dynamic-container` listens for `acp-form-requested` and opens automatically when present.
 
+- **Actions after form submit**: The package emits `acp-actions-requested` with `{ open: true, item }` after a valid form submission. Bind it to `onActionsRequested($event.detail)`, append `detail.item` to `activityItems`, and set `actionsOpen = true`. Keep `workspaceOpen = true`; Actions must open beside the Workspace rather than replacing it.
+
 - **Workspace and Actions persistence**: Keep the workspace and Actions pane mounted over the stage. The Actions pane is an adjacent column to the workspace, not a replacement. Use the package classes `.acp-workspace__surface-layer`, `.acp-workspace__surface`, and `.acp-workspace__actions`.
 
 - **Design tokens & styles loaded**: Double-check `acp-tokens.css` and `acp-chat-panel.css` are included globally so header, buttons, and layout styles render correctly (missing styles often cause spacing/height regressions).
@@ -733,7 +758,7 @@ Quick integration checklist:
 - Add the package styles to `angular.json` or import into `src/styles.css`.
 - Verify `.app-shell` and `.acp-workspace` height rules exist in host CSS.
 - Confirm header buttons and composer exist visually after integration and fires the expected DOM events.
-- Confirm `acp-form-requested`, `acp-width-change`, `acp-open-change`, `acp-message-sent` are observed by host when exercising chat actions.
+- Confirm `acp-form-requested`, `acp-actions-requested`, `acp-width-change`, `acp-open-change`, `acp-message-sent` are observed by host when exercising chat actions.
 
 
 
