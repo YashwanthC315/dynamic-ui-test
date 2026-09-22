@@ -32,6 +32,13 @@ The workspace row must follow this exact horizontal sequence:
 - ❌ **Wrong 3**: Dynamic forms opening at the far-right edge of the viewport instead of next to chat.
 - ❌ **Wrong 4**: Placing the chat inside a routed page component (it must live in the app shell).
 
+### Required Class Names & Stylesheet Placement (Do NOT deviate)
+
+> [!IMPORTANT]
+> **Do not rename `.app-shell`, `.app-shell__body`, `.acp-workspace`, `.acp-workspace__chat`, or `.acp-workspace__stage`** — even to match the host application's existing naming conventions (e.g. do not rename `.app-shell__body` to `.app-body`). These exact class names are required because the package's own defensive/fallback CSS (in `acp-chat-panel.css`) targets them by name. If the host already has an existing wrapper element with a different name, **add these classes alongside the existing ones** rather than substituting or renaming them. A silent rename will cause package-level fallback rules to stop applying with no visible error — only a subtly broken layout.
+>
+> **These layout rules must live in a global stylesheet** — `src/styles.css` / `src/styles.scss`, or whatever file is listed in `angular.json`'s global `styles` array. **Never place them inside a component's own `.component.css` / `.component.scss` file.** Angular's default view encapsulation (`ViewEncapsulation.Emulated`) scopes component styles to that component's own template only, using an `_ngcontent-*` attribute selector under the hood. Layout rules placed there will not reliably cascade to `router-outlet`-rendered content or sibling components, and — worse — can silently shadow or duplicate the correct global rules without producing any build error. If you find layout CSS already present in a component stylesheet, migrate it to the global stylesheet rather than editing it in place.
+
 ---
 
 ## Design Tokens Contract
@@ -157,6 +164,9 @@ Ensure package styles are loaded globally so all components, form layers, and la
     @import '~@acp/chat-panel/styles/acp-tokens.css';
     @import '~@acp/chat-panel/styles/acp-chat-panel.css';
     ```
+
+> [!IMPORTANT]
+> Verify these two files are actually being served (check the Network tab or `<head>` of the rendered page), not just referenced. A missing `acp-tokens.css` means every `--acp-*` variable without an inline fallback (shadows, font sizes, radii) silently resolves to nothing, which compounds spacing/height bugs and makes them harder to diagnose.
 
 ---
 
@@ -441,6 +451,8 @@ Existing Footer (intact)
 > - Apply `overflow: hidden` to `.app-shell` and `.app-shell__body` so the browser window (`body`) does not scroll.
 > - Only `.acp-workspace__content` should scroll vertically (`overflow-y: auto; overflow-x: hidden`).
 > - Use `*ngIf="openForms.length"` on `.acp-workspace__form-layer` so an empty form layer never introduces ghost horizontal/vertical scrollbars.
+>
+> **3. `height: 100vh` vs `min-height: 100vh` — these are NOT interchangeable.** `.app-shell` (and every ancestor in the height chain) must use `height: 100vh`, never `min-height: 100vh`. `min-height` only sets a floor — it lets the element grow taller than the viewport to fit its content, which defeats `overflow: hidden` entirely and makes `<body>` itself become the scrollable element instead of `.acp-workspace__content`. This is a very easy substitution for an integration agent to make by habit (`min-height: 100vh` is a common pattern elsewhere in most apps) — treat it as a hard requirement, not a stylistic choice, specifically for `.app-shell`.
 
 **Non-negotiable height rule:** The workspace row must be the flex-growing body below any application header. Do not place it in a content-sized wrapper, and do not put a footer inside `.app-shell__body`. The package styles include defensive root rules, but the host shell must preserve this hierarchy:
 
@@ -782,4 +794,8 @@ Before considering the task complete, verify every item:
 - [ ] **Opaque Surfaces**: The dynamic form and chat backgrounds are completely opaque (no text bleed-through from routed content).
 - [ ] **Design Tokens Applied**: Colors and spacing match the host application via CSS variables (`--acp-*`).
 - [ ] **Styles Loaded**: Package CSS (`acp-tokens.css` and `acp-chat-panel.css`) is loaded globally in `angular.json` or `styles.css`.
+- [ ] **Class Names Unchanged**: `.app-shell`, `.app-shell__body`, `.acp-workspace`, `.acp-workspace__chat`, and `.acp-workspace__stage` all exist verbatim in the compiled DOM — none were renamed to match host conventions.
+- [ ] **Layout CSS Is Global**: The layout rules above live in a global stylesheet (per `angular.json`'s `styles` array), not inside any component's view-encapsulated `.component.css`/`.scss` file.
+- [ ] **`height` Not `min-height`**: `.app-shell` uses `height: 100vh`, not `min-height: 100vh`.
+- [ ] **Computed Flex Verified**: In devtools, `.app-shell`, `.app-shell__body`, and `.acp-workspace` all compute `display: flex` (not `block`). Check this first whenever the layout renders stacked vertically instead of side-by-side.
 - [ ] **Build Success**: `npm run build` succeeds with zero template, schema, or styling errors.
