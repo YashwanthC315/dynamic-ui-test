@@ -1,7 +1,9 @@
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;      /* was min-height: 100vh */
+  min-height: 0;
+  overflow: hidden;    /* add */
 }
 
 .topbar {
@@ -64,7 +66,9 @@
 .app-body {
   display: flex;
   flex: 1;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;    /* add */
 }
 
 .content {
