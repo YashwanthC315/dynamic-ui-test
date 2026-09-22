@@ -454,6 +454,8 @@ html/body/app-root (100% height)
 
 The sidebar, chat, stage, and routed dashboard must all be children of `.app-shell__body`. A footer belongs after `.app-shell__body`, not inside it. This is required for the chat column and composer to reach the bottom of the viewport.
 
+The package composer is explicitly bottom-anchored with `margin-top: auto` and includes bottom padding. Do not position the composer with absolute coordinates or add another footer inside `<acp-chat-panel>`; the message list must grow above the composer and the text box must remain at the bottom with visible spacing below it.
+
 The package includes a fallback for hosts whose root height chain is not yet established: `.acp-workspace` uses `height: calc(100vh - var(--acp-app-header-height))`. The default is `42px`, matching the compact CampusTrack header in the reference layout. If the host header differs, define `--app-header-height` globally before loading the ACP styles.
 
 ```css

@@ -14,6 +14,8 @@ The host must place `.acp-workspace` inside a flex-growing `.app-shell__body` be
 
 The package also includes a viewport fallback: `.acp-workspace` uses `calc(100vh - var(--acp-app-header-height))`. The default header allowance is `42px`; set `--app-header-height` globally when the host header has a different rendered height.
 
+The composer is explicitly bottom-anchored with `margin-top: auto` and bottom padding. The message list expands into the remaining panel height, so the text box stays at the bottom instead of appearing immediately below the last message.
+
 ## Quick Installation
 
 In your application root:
