@@ -149,7 +149,7 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
         type="button"
         class="nav-item nav-item--ai"
         [class.active]="chatOpen"
-        (click)="chatOpen = !chatOpen"
+        (click)="onChatOpenChange(!chatOpen)"
         aria-label="Toggle AI Agent"
       >
         <span class="nav-icon">🤖</span>
@@ -168,7 +168,7 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
           [pending]="isPending"
           [messages]="messages"
           [chatHistory]="chatHistory"
-          (acp-open-change)="chatOpen = $event.detail"
+          (acp-open-change)="onChatOpenChange($event.detail)"
           (acp-width-change)="chatWidth = $event.detail"
           (acp-new-chat)="onNewChat()"
           (acp-message-sent)="onChatMessage($event.detail)"
@@ -260,7 +260,9 @@ import {
   styleUrls: ['./app-shell.component.css']
 })
 export class AppShellComponent implements OnInit {
-  chatOpen = true;
+  // Default/initial state: all three panels start closed. The sidebar's
+  // AI toggle button is the only way to open the chat panel.
+  chatOpen = false;
   chatWidth = 380;
   agentName = 'Assistant';
   isPending = false;
@@ -322,6 +324,20 @@ export class AppShellComponent implements OnInit {
     this.workspaceOpen = false;
     this.actionsOpen = false;
     this.activeFormSpec = null;
+  }
+
+  // Closing the AI Agent panel must cascade: Workspace and Actions are
+  // children of the chat session, so they close and reset with it instead
+  // of persisting as orphaned panes with no way to dismiss them.
+  onChatOpenChange(open: boolean) {
+    this.chatOpen = open;
+    if (!open) {
+      this.workspaceOpen = false;
+      this.workspaceMinimized = false;
+      this.actionsOpen = false;
+      this.actionsMinimized = false;
+      this.activeFormSpec = null;
+    }
   }
 
   onChatMessage(text: string) {
@@ -438,6 +454,35 @@ The ACP v0.2.0 package incorporates advanced window management:
    - On Workspace: provides **"Open Actions"** to view activity log without submitting.
    - On Actions: provides **"Copy all saved names"** (automatically copies saved student names to system clipboard).
 
+### Default/Initial State
+
+On first load — before the user clicks the sidebar's AI toggle — **all three
+surfaces (chat, Workspace, Actions) must be closed**: `chatOpen`,
+`workspaceOpen`, and `actionsOpen` all start `false`. Do not set `chatOpen =
+true` (or persist any of these flags in eagerly-loaded state) — the sidebar
+button is the only trigger that should open the chat panel.
+
+### Close Cascade
+
+Workspace and Actions are children of the chat session, not independent
+surfaces — never wire a bare `chatOpen = $event.detail` to `acp-open-change`.
+Always route it through a handler (see `onChatOpenChange` in Step 3) that also
+resets `workspaceOpen`, `workspaceMinimized`, `actionsOpen`, and
+`actionsMinimized` to their closed defaults when the chat panel closes.
+Otherwise Workspace/Actions are left rendered with no owning chat session and
+no way for the user to dismiss them.
+
+### Reflow on Open/Close/Minimize
+
+The layout only reflows correctly if `*ngIf` (not `[hidden]` or
+`visibility:hidden`) is used to add/remove `.acp-workspace__chat`,
+`.acp-workspace__surface`, and `.acp-workspace__actions` from the DOM, and if
+no host CSS gives these columns a fixed `width`/`flex-basis` outside of the
+package's rail (`.acp-workspace-rail` / `.acp-actions-rail`) classes. When a
+pane is minimized, its container must pick up the `52px` rail class so flex
+reclaims the freed space immediately — a fixed-width wrapper around the pane
+is what causes a stale block of empty space after minimizing.
+
 ---
 
 ## Step 5: Verification Checklist
@@ -453,3 +498,8 @@ The ACP v0.2.0 package incorporates advanced window management:
 - [ ] Actions pane renders status items with kind tints (`success`, `warning`, `error`, `info`).
 - [ ] Kebab menu allows copying all saved names to clipboard.
 - [ ] All colors derive from `--acp-*` design tokens with opaque backgrounds.
+- [ ] On initial app load, the AI Agent, Workspace, and Actions panels are all **closed** (nothing auto-opens).
+- [ ] The Send button is visible and clickable at the default chat width and after resizing to the minimum width.
+- [ ] Closing the AI Agent panel also closes Workspace and Actions (no orphaned panes remain open).
+- [ ] Minimizing Workspace or Actions reclaims the freed width immediately — no residual empty space in the stage.
+- [ ] Opening, closing, and minimizing any pane reflows the layout without a manual resize/refresh.
