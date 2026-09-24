@@ -1,8 +1,56 @@
-# @acp/chat-panel (v0.2.0)
+# @acp/chat-panel (v0.2.1)
 
 Framework-agnostic, non-overlay AI chat panel and workspace surface package for Angular (all versions: 4–19+) and modern web applications.
 
-## What's New in v0.2.0
+## What's New in v0.2.1
+
+- Chat, Workspace, and Actions now start closed. Closed elements occupy zero width.
+- The host owns the single AI Agent button at the bottom of its sidebar and toggles `<acp-chat-panel>.open`.
+- Opening Chat never opens Workspace or Actions. Workspace opens only for an explicit `acp-form-requested` request or host API update.
+- Activity requests open Actions immediately beside Workspace. Actions remains open until the user minimizes or closes it.
+- Chat, Workspace, and Actions have independent, clamped drag resizing and emit their width-change events.
+- Buddy enrollment requests render the parser, validation, student strip, editable form, and Clear / Cancel / Submit actions inside Workspace.
+
+## Host-owned launch button
+
+The package deliberately does not render a sidebar button. Place one button at the bottom of the host sidebar and keep the `open` property as the visibility source of truth:
+
+```html
+<nav class="app-sidebar">
+  <div class="app-sidebar__items"><!-- host navigation --></div>
+  <button type="button" class="app-sidebar__ai" aria-label="Toggle AI Agent">AI Agent</button>
+</nav>
+
+<acp-chat-panel></acp-chat-panel>
+```
+
+```js
+const toggle = document.querySelector('.app-sidebar__ai');
+const chat = document.querySelector('acp-chat-panel');
+
+toggle.addEventListener('click', () => { chat.open = !chat.open; });
+chat.addEventListener('acp-open-change', (event) => { toggle.classList.toggle('active', event.detail); });
+```
+
+Do not add `open` in initial markup. Chat must never be opened on page load. Opening Chat does not set `open` on either adjacent pane.
+
+## Pane behavior
+
+Use this DOM order in the shell: `sidebar | chat | workspace | actions | routed content`. Workspace and Actions may sit in `.acp-workspace__surface-layer` so routed content remains mounted beneath the opaque surfaces.
+
+- `acp-form-requested` opens Workspace unless the user explicitly closed it. Setting `workspace.open = true` allows a later request to open it again.
+- `acp-actions-requested` with an activity item opens Actions, appends the item, and does not close Workspace.
+- Workspace's **Open Actions** kebab command also opens the adjacent Actions pane.
+- Minimize produces a clickable vertical rail. Maximize and restore preserve each pane's normal width. Close removes the pane from layout.
+- Resize events are `acp-width-change`, `acp-form-width-change`, and `acp-actions-width-change` for Chat, Workspace, and Actions respectively.
+
+## Changelog
+
+### 0.2.1
+
+Fixed eager Chat/Workspace opening, residual closed columns, disappearing Actions, sibling request routing, pane resizing, rail restoration, and Buddy enrollment controls. Added an `open`/width API to `<acp-actions-pane>` while retaining the existing custom elements and events.
+
+## Previous v0.2.0 features
 
 - 🔍 **In-Conversation Search**: Filter messages in real time with match count indicator and quick clear.
 - 🕒 **Chat History Flyout**: View recent conversation threads with timestamps and instant restore capability.
@@ -47,7 +95,7 @@ npm install ./acp-package-0.2.0
 
 # Option B: Pack into a tarball and install
 cd acp-package-0.2.0 && npm pack
-npm install ./acp-package-0.2.0/acp-chat-panel-0.2.0.tgz
+npm install ./acp-package-0.2.0/acp-chat-panel-0.2.1.tgz
 ```
 
 ## Quickstart

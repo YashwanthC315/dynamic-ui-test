@@ -1,8 +1,8 @@
-# ACP Chat Panel — Universal Application Integration Agent Guide (v0.2.0)
+# ACP Chat Panel - Universal Application Integration Agent Guide (v0.2.1)
 
 ## Goal
 
-Integrate the `@acp/chat-panel` (v0.2.0) package into an application shell so that:
+Integrate the `@acp/chat-panel` (v0.2.1) package into an application shell so that:
 1. The sidebar has a single AI chat toggle button.
 2. The chat panel opens **docked directly next to the sidebar** as a full-height workspace column.
 3. The panel provides **in-conversation search**, **chat history switching**, **in-flight thinking indicator**, **cancellation**, and **interactive suggestion chips**.
@@ -13,6 +13,17 @@ Integrate the `@acp/chat-panel` (v0.2.0) package into an application shell so th
 8. All styling is governed strictly by **Design Tokens** (`--acp-*` CSS variables) with fully opaque surfaces.
 
 This guide supports **all Angular versions** (both Standalone Angular 14–19+ and NgModule Angular 4–16).
+
+## v0.2.1 behavior rules
+
+1. Chat starts closed. Do not put `open` on `<acp-chat-panel>` in initial markup and do not open it from an initialization hook.
+2. The host application owns exactly one AI Agent/chat toggle button. Place it at the bottom of the host sidebar; the package does not supply it.
+3. The host button toggles the chat element's `open` property. The element's close control emits `acp-open-change` with `false`.
+4. Opening Chat never opens Workspace or Actions.
+5. Workspace opens only after `acp-form-requested` or an equivalent explicit host update. An explicit user close is respected.
+6. An activity-bearing `acp-actions-requested` opens Actions beside Workspace. Actions stays open until the user explicitly minimizes or closes it.
+7. Chat, Workspace, and Actions are independently resizable. Bind `acp-width-change`, `acp-form-width-change`, and `acp-actions-width-change` when width state is stored by the host.
+8. Closed elements occupy zero width. Do not reserve fixed-width shell columns around closed elements.
 
 ---
 
@@ -160,7 +171,7 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
     <!-- 2b. Full-Height ACP Workspace Row -->
     <div class="acp-workspace">
       <!-- Chat Panel Column -->
-      <div class="acp-workspace__chat" *ngIf="chatOpen">
+      <div class="acp-workspace__chat">
         <acp-chat-panel
           [open]="chatOpen"
           [width]="chatWidth"
@@ -188,18 +199,19 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
         </main>
 
         <!-- Persistent Surface Layer -->
-        <div class="acp-workspace__surface-layer" *ngIf="workspaceOpen || actionsOpen">
+        <div class="acp-workspace__surface-layer">
           <!-- Dynamic Workspace / Surface -->
           <div
             class="acp-workspace__surface"
             [class.acp-workspace-rail]="workspaceMinimized"
-            *ngIf="workspaceOpen"
           >
             <acp-dynamic-container
               [open]="workspaceOpen"
               [minimized]="workspaceMinimized"
+              [formWidth]="workspaceWidth"
               [formSpec]="activeFormSpec"
               (acp-open-change)="workspaceOpen = $event.detail"
+              (acp-form-width-change)="workspaceWidth = $event.detail"
               (acp-open-actions)="openActionsPane()"
               (acp-workspace-maximize)="onWorkspaceMaximize()"
               (acp-restore-default-split)="restoreDefaultSplit()"
@@ -222,11 +234,14 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
           <div
             class="acp-workspace__actions"
             [class.acp-actions-rail]="actionsMinimized"
-            *ngIf="actionsOpen"
           >
             <acp-actions-pane
+              [open]="actionsOpen"
+              [width]="actionsWidth"
               [items]="activityItems"
               [minimized]="actionsMinimized"
+              (acp-open-change)="actionsOpen = $event.detail"
+              (acp-actions-width-change)="actionsWidth = $event.detail"
               (acp-actions-close)="actionsOpen = false"
               (acp-action-click)="onActionClick($event.detail)"
               (acp-restore-default-split)="restoreDefaultSplit()"
@@ -268,8 +283,10 @@ export class AppShellComponent implements OnInit {
   isPending = false;
 
   workspaceOpen = false;
+  workspaceWidth = 540;
   workspaceMinimized = false;
   actionsOpen = false;
+  actionsWidth = 280;
   actionsMinimized = false;
 
   activeFormSpec: AcpFormSpec | null = null;
@@ -321,23 +338,10 @@ export class AppShellComponent implements OnInit {
 
   onNewChat() {
     this.messages = [];
-    this.workspaceOpen = false;
-    this.actionsOpen = false;
-    this.activeFormSpec = null;
   }
 
-  // Closing the AI Agent panel must cascade: Workspace and Actions are
-  // children of the chat session, so they close and reset with it instead
-  // of persisting as orphaned panes with no way to dismiss them.
   onChatOpenChange(open: boolean) {
     this.chatOpen = open;
-    if (!open) {
-      this.workspaceOpen = false;
-      this.workspaceMinimized = false;
-      this.actionsOpen = false;
-      this.actionsMinimized = false;
-      this.activeFormSpec = null;
-    }
   }
 
   onChatMessage(text: string) {
@@ -415,7 +419,7 @@ export class AppShellComponent implements OnInit {
   }
 
   onWorkspaceMaximize() {
-    this.actionsMinimized = true;
+    // Optional host persistence/analytics hook. Actions remains unchanged.
   }
 
   restoreDefaultSplit() {
@@ -424,7 +428,7 @@ export class AppShellComponent implements OnInit {
   }
 
   onFormSubmitted(detail: any) {
-    this.workspaceOpen = false;
+    // Keep Workspace open so the user can review or edit the submitted data.
   }
 
   onActionsRequested(detail: { open: boolean; item: AcpActivityItem }) {
@@ -445,10 +449,10 @@ export class AppShellComponent implements OnInit {
 
 ## Step 4: Window Management (Rails & Restore)
 
-The ACP v0.2.0 package incorporates advanced window management:
+The ACP v0.2.1 package incorporates advanced window management:
 
 1. **Minimize (`−`)**: Collapses the pane into a slim vertical rail (`52px` wide) displaying a vertical label and close button.
-2. **Maximize (`⤢`)**: Expands the pane to occupy the stage, signaling the adjacent pane to collapse into a rail.
+2. **Maximize (`⤢`)**: Expands that pane to its configured maximum without closing the adjacent pane.
 3. **Restore**: Clicking anywhere on a minimized rail's header restores the pane to its standard width.
 4. **Kebab Menu (`⋮`)**:
    - On Workspace: provides **"Open Actions"** to view activity log without submitting.
@@ -462,26 +466,20 @@ surfaces (chat, Workspace, Actions) must be closed**: `chatOpen`,
 true` (or persist any of these flags in eagerly-loaded state) — the sidebar
 button is the only trigger that should open the chat panel.
 
-### Close Cascade
+### Independent Close State
 
-Workspace and Actions are children of the chat session, not independent
-surfaces — never wire a bare `chatOpen = $event.detail` to `acp-open-change`.
-Always route it through a handler (see `onChatOpenChange` in Step 3) that also
-resets `workspaceOpen`, `workspaceMinimized`, `actionsOpen`, and
-`actionsMinimized` to their closed defaults when the chat panel closes.
-Otherwise Workspace/Actions are left rendered with no owning chat session and
-no way for the user to dismiss them.
+Each custom element owns its `open` state. Closing Chat must not close or
+minimize Workspace or Actions. Closing Workspace must not close Actions, and
+Actions remains visible until its own close control is used. Keep all three
+elements mounted so sibling request events can reach them; the package makes a
+closed element zero width.
 
 ### Reflow on Open/Close/Minimize
 
-The layout only reflows correctly if `*ngIf` (not `[hidden]` or
-`visibility:hidden`) is used to add/remove `.acp-workspace__chat`,
-`.acp-workspace__surface`, and `.acp-workspace__actions` from the DOM, and if
-no host CSS gives these columns a fixed `width`/`flex-basis` outside of the
-package's rail (`.acp-workspace-rail` / `.acp-actions-rail`) classes. When a
-pane is minimized, its container must pick up the `52px` rail class so flex
-reclaims the freed space immediately — a fixed-width wrapper around the pane
-is what causes a stale block of empty space after minimizing.
+Keep the wrappers mounted and let each element's `open` property control
+visibility. Do not give wrappers fixed `width`, `min-width`, or `flex-basis`.
+The package collapses closed elements to zero and minimized elements to the
+tokenized rail width.
 
 ---
 
@@ -500,6 +498,6 @@ is what causes a stale block of empty space after minimizing.
 - [ ] All colors derive from `--acp-*` design tokens with opaque backgrounds.
 - [ ] On initial app load, the AI Agent, Workspace, and Actions panels are all **closed** (nothing auto-opens).
 - [ ] The Send button is visible and clickable at the default chat width and after resizing to the minimum width.
-- [ ] Closing the AI Agent panel also closes Workspace and Actions (no orphaned panes remain open).
+- [ ] Closing Chat does not implicitly close Workspace or Actions; each pane's close button controls its own state.
 - [ ] Minimizing Workspace or Actions reclaims the freed width immediately — no residual empty space in the stage.
 - [ ] Opening, closing, and minimizing any pane reflows the layout without a manual resize/refresh.
