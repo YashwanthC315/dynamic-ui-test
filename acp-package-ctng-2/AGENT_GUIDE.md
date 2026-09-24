@@ -3,7 +3,7 @@
 ## Goal
 
 Integrate the `@acp/chat-panel` (v0.2.1) package into an application shell so that:
-1. The sidebar has a single AI chat toggle button.
+1. The application's existing side navigation has a single AI chat toggle button; create a side panel only when none exists.
 2. The chat panel opens **docked directly next to the sidebar** as a full-height workspace column.
 3. The panel provides **in-conversation search**, **chat history switching**, **in-flight thinking indicator**, **cancellation**, and **interactive suggestion chips**.
 4. The application's routed content fills the remaining workspace space without internal layout reflow.
@@ -17,7 +17,7 @@ This guide supports **all Angular versions** (both Standalone Angular 14–19+ a
 ## v0.2.1 behavior rules
 
 1. Chat starts closed. Do not put `open` on `<acp-chat-panel>` in initial markup and do not open it from an initialization hook.
-2. The host application owns exactly one AI Agent/chat toggle button. Place it at the bottom of the host sidebar; the package does not supply it.
+2. The host application owns exactly one AI Agent/chat toggle button. First locate and reuse the application's existing side navigation, sidebar, navigation rail, side rail, side menu, drawer, or left/right navigation panel, even if it uses a different name. Add the button at the bottom of that existing side panel. Create a new side panel only when the host has no side navigation. Never place the button in or create a top bar, header, toolbar, or other horizontal panel.
 3. The host button toggles the chat element's `open` property. The element's close control emits `acp-open-change` with `false`.
 4. Opening Chat never opens Workspace or Actions.
 5. Workspace opens only after `acp-form-requested` or an equivalent explicit host update. An explicit user close is respected.
@@ -147,15 +147,13 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
 
 ```html
 <div class="app-shell">
-  <!-- 1. Host Header -->
-  <header class="app-header">
-    <div class="logo">App</div>
-  </header>
-
-  <!-- 2. Shell Body -->
+  <!-- Existing host top chrome is untouched and intentionally omitted. -->
   <div class="app-shell__body">
-    <!-- 2a. Host Sidebar with AI Toggle -->
+    <!-- EXISTING host side navigation with AI Toggle inserted at its bottom.
+         Reuse the host's actual element and classes; do not create this nav if
+         a sidebar, side rail, drawer, side menu, or navigation panel exists. -->
     <nav class="app-sidebar">
+      <!-- Existing host navigation items remain here, unchanged. -->
       <button
         type="button"
         class="nav-item nav-item--ai"
@@ -168,7 +166,7 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
       </button>
     </nav>
 
-    <!-- 2b. Full-Height ACP Workspace Row -->
+    <!-- Full-Height ACP Workspace Row -->
     <div class="acp-workspace">
       <!-- Chat Panel Column -->
       <div class="acp-workspace__chat">
@@ -253,6 +251,20 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
   </div>
 </div>
 ```
+
+### Sidebar discovery rule
+
+Before editing the shell, inspect its layout and search for existing vertical
+navigation under names such as `sidebar`, `sidenav`, `side-nav`, `nav-rail`,
+`navigation-rail`, `side-menu`, `drawer`, `menu-panel`, or equivalent
+application-specific components and CSS classes. Insert the single AI Agent
+button into the existing side panel's bottom/footer area, preserving its
+markup, icon library, sizing, active state, accessibility, and styling.
+
+Do not add the button to a header, top navigation, top toolbar, masthead, or
+any horizontal panel. Do not create a second sidebar beside an existing side
+panel. Only if no vertical side navigation exists may the host create a new
+side panel, and that fallback must contain no new top panel or header.
 
 ---
 
