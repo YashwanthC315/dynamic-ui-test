@@ -1,4 +1,4 @@
-# ACP Chat Panel Recreation Specification
+# ACP Package Specification
 
 ## 1. Purpose
 
