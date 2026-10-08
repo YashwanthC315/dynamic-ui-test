@@ -7,7 +7,7 @@
 | Can it run in React? | Yes. These are browser Custom Elements, not Angular components. Register the bundle, load CSS, mount the elements, assign object/array properties via refs, and subscribe to DOM `CustomEvent`s. |
 | How do I add/remove it? | Install/import it, add it to the persistent app shell beside the existing sidebar, and wire events. Close by setting `open = false` (keeps state/listeners); remove by unmounting the element and its host listeners. |
 | How does it talk to the host? | Host assigns element properties; the elements emit bubbling DOM events. The host can translate them into NgRx actions, React state updates, navigation, and network operations. |
-| Does it call an AI backend? | No backend or agent transport is provided by this archive. The host calls its backend over HTTPS or WebSocket and passes replies back through `messages`, `pending`, `formSpec`, and `items`. |
+| Does it call an AI backend? | The optional `@acp/chat-panel/harness` connector calls a configured agent-file-run service. Without that connector, the host can use its own transport and update `messages`, `pending`, `formSpec`, and `items`. |
 | What are the response types? | The shipped UI accepts messages with optional rich blocks (text, markdown, status, data, suggestions, form, confirmation, link, error), form specs, and activity items. A network envelope for these is a host/backend design decision. |
 
 **Read in order:** sections 3-5 explain ownership and layout; sections 6-8 are the shipped API; sections 12-16 show mounting, state management, and backend design; the final checklist is the recreation test.
@@ -21,8 +21,8 @@ The package is a framework-agnostic set of browser Custom Elements. It provides 
 ## 2. Package Identity
 
 - Package name: `@acp/chat-panel`
-- Archive currently stored here: `acp-chat-panel-0.2.3.tgz`
-- Manifest/runtime version inside the archive: `0.2.3`
+- Archive currently stored here: `acp-chat-panel-0.2.4.tgz`
+- Manifest/runtime version inside the archive: `0.2.4`
 - Entry module: `dist/acp-chat-panel.js`
 - Type declarations: `dist/acp-chat-panel.d.ts`
 - Main stylesheet: `styles/acp-chat-panel.css`
@@ -39,33 +39,33 @@ The archive contains no Angular compiler dependency. Angular hosts only need to 
 - Rendering chat messages and rich message blocks.
 - Chat search, history flyout, new-chat control, composer, pending state, and cancel control.
 - Parsing the configured form trigger prefix and emitting a normalized form request.
-- Rendering dynamic forms and handling their local validation/submission UI.
-- Rendering the Buddy enrollment workspace when used.
+- Rendering dynamic forms and the Buddy enrollment workspace from agent-provided surfaces.
 - Rendering activity items and pane controls.
 - Clamping pane widths and emitting width changes.
 - Open, close, minimize, maximize, restore, and rail behavior for package panes.
 - Dispatching browser `CustomEvent`s with `bubbles: true` and `composed: true`.
 - Applying styles through `--acp-*` CSS variables.
+- Optionally posting agent-file-run requests and streaming replies through `@acp/chat-panel/harness`.
 
 ### Host application owns
 
-- The sidebar and the single AI Agent launch button.
+- The existing sidebar and its single AI Agent launch button; the package creates no navigation.
 - The shell layout and router outlet.
-- Chat/message/history persistence and the agent backend call.
-- Navigation after a package event.
+- Agent endpoint, agent file path, runtime token source, and context supplied to the optional connector.
+- Application navigation, persistence, and domain-specific database saves.
 - Whether requested forms and actions are accepted and where their data is stored.
-- State synchronization for `open`, widths, messages, history, form specs, and activity items.
+- State synchronization for pane visibility and dimensions.
 - Mapping application design tokens to `--acp-*` variables.
 
-The recommended direction of data flow is:
+The connector path is:
 
 ```text
-user -> custom element -> DOM event -> host adapter -> state action/effect
-                                      -> HTTPS/WSS backend -> host state
-                                      -> element properties -> rendered UI
+user -> custom element -> harness bridge -> authenticated file-run POST
+                                      -> read-only events WebSocket
+                                      -> chat/workspace custom elements
 ```
 
-The browser package never needs backend credentials, application routing rules, or direct access to the host store.
+The elements do not access credentials or application state. When the optional connector is enabled, the host explicitly supplies its runtime token and context; the connector has no access to the host store.
 
 ## 4. Required Shell Layout
 
@@ -351,11 +351,23 @@ At minimum, hosts should map these token groups:
 
 All package surfaces must remain opaque so routed content cannot show through forms, chat, rails, or action rows. Override the defaults by defining the same variables in the host theme.
 
+## Agent-File-Run Connector
+
+The optional `@acp/chat-panel/harness` entry point provides `connectAcpHarness()` for the agent-file-run protocol used by the CampusTrack frontend:
+
+1. `POST {baseUrl}/api/playground/agent-file-runs` with `{ agent_path, user_prompt }` and a bearer token.
+2. Read text reply frames from `GET {baseUrl}/api/playground/runs/{run_id}/events/ws` using the `aetheris.events.v1` and encoded bearer subprotocols.
+3. Parse assistant JSON (`messages`, `actions`, and optional `surface`) and update the chat/workspace custom elements.
+
+`baseUrl` defaults to `http://localhost:4001`; `bearerToken` and `agentPath` must be supplied by the host. `suggestionsAgentPath` is optional. This is not the legacy mock-harness `ws://localhost:8787` chat socket. The browser host must satisfy CORS and WebSocket origin policy. Do not bundle production credentials; use a host proxy when the service credential is not intended for browser exposure. The host remains responsible for domain-specific context, database saves, and application routing.
+`baseUrl` defaults to `http://localhost:4001`; supply `agentPath` and either `bearerToken` or `getBearerToken`. `suggestionsAgentPath` is optional. This is not the legacy mock-harness `ws://localhost:8787` chat socket. The browser host must satisfy CORS and WebSocket origin policy. Do not bundle production credentials; use a host proxy when the service credential is not intended for browser exposure. The host remains responsible for domain-specific context, database saves, and application routing.
+The connector accepts the host `environment` object and reads `AGENT_FILE_RUN_API_URL`, `AGENT_FILE_RUN_BEARER_TOKEN`, `AGENT_FILE_RUN_AGENT_PATH`, and optional `AGENT_SUGGESTIONS_AGENT_PATH`. Explicit `config` values override environment values; `getBearerToken` can resolve the current session token. The API URL, token, and main agent path are required. `AGENT_HARNESS_WS_URL` (commonly port 8787) is a distinct legacy chat socket and is not the agent-file-run API. The browser host must satisfy CORS and WebSocket origin policy. Do not bundle production credentials; use a host proxy when the service credential is not intended for browser exposure. The host remains responsible for domain-specific context, database saves, and application routing.
+
 ## 12. Install, Mount, Hide, Remove
 
 ### Angular installation
 
-1. Install the local archive: `npm install ./acp-chat-panel-0.2.3.tgz`.
+1. Install the local archive: `npm install ./acp-chat-panel-0.2.4.tgz`.
 2. Import `@acp/chat-panel` once from the application bootstrap entry point.
 3. Add `CUSTOM_ELEMENTS_SCHEMA` to the Angular module/component that contains the custom elements.
 4. Load `tokens.css` and `styles.css` globally.
@@ -381,7 +393,7 @@ All package surfaces must remain opaque so routed content cannot show through fo
 | Host to UI | Assign properties, preferably DOM properties for arrays/objects | `chat.messages = messages; chat.pending = true` |
 | UI to host | Listen for `CustomEvent`, read `event.detail` | `acp-message-sent` yields text |
 | Host to UI command | Call public methods or update properties | `chat.sendMessage('hello')`, `workspace.open = false` |
-| Host to external systems | Translate UI events into store actions/effects and backend calls; reflect results via properties | `messageSent` -> effect -> HTTP/WSS -> `replyReceived` -> `chat.messages` |
+| Host to external systems | Use `connectAcpHarness` or one host-owned transport, never both for the same event | `acp-message-sent` -> file-run request -> reply -> `chat.messages` |
 
 The fourth path belongs to the host, not to the Custom Element. Events can bubble to a common shell ancestor; bind to specific elements when `acp-open-change` is shared by multiple panes, or use `event.target` to identify the source.
 
@@ -435,7 +447,7 @@ In the shell template, the existing sidebar button toggles host state and the el
 ></acp-chat-panel>
 ```
 
-This is an illustrative shell fragment; wire form/Actions elements and their events as in the integration guide. Angular template event typings may need a typed wrapper/cast depending on the host's Angular version. `CUSTOM_ELEMENTS_SCHEMA` only admits the elements; it does not create NgRx integrations automatically.
+This is an illustrative host-managed transport fragment. If `connectAcpHarness` is active, omit its `acp-message-sent` handler and let the connector own prompt submission, messages, and pending state. Wire form/Actions elements and their events as in the integration guide. Angular template event typings may need a typed wrapper/cast depending on the host's Angular version. `CUSTOM_ELEMENTS_SCHEMA` only admits the elements; it does not create NgRx integrations automatically.
 
 ```typescript
 // Pseudocode for a host effect: choose ONE active transport per request.
@@ -497,9 +509,9 @@ function ChatColumn({ messages, open, onOpenChange, onSend }: {
 
 In the parent shell, keep `open` in state, place `<ChatColumn ... />` next to the sidebar, and set `open` from the sidebar toggle. To hide, set `open` to `false`; to remove, stop rendering `ChatColumn` and its wrapper. The effects above remove host listeners on unmount. This snippet shows only chat: wire `pending`, history, forms, Actions, and width changes in the real shell. JSX custom-element typing can require extending `JSX.IntrinsicElements` depending on React/TypeScript versions. For server-rendered React, register the bundle in a browser-only entry/effect because `HTMLElement` and `customElements` require a DOM. React users can use a Redux store or plain React state; NgRx is Angular-specific.
 
-## 15. Backend and Agentic AI (Recommended, Not Shipped)
+## 15. Host Backend and Agentic AI (Security and Alternatives)
 
-The host is the trust boundary. Authenticate to **its own** backend; keep secrets and third-party agent credentials server-side. Let the backend orchestrate model calls, tools, authorization, persistence, and auditing. Do not execute arbitrary tool calls, navigate to untrusted URLs, or treat AI-proposed actions as successful writes without host/server validation.
+The host is the trust boundary. The shipped optional connector sends its configured bearer token from the browser to the agent-file-run service; use it only when that credential is intended for client-side use. For production secrets, route through a host-side proxy. Keep third-party model credentials server-side, and let the backend enforce tools, authorization, persistence, and auditing. Do not execute arbitrary tool calls, navigate to untrusted URLs, or treat AI-proposed actions as successful writes without host/server validation.
 
 One possible application-level exchange is:
 

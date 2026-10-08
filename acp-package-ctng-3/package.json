@@ -1,6 +1,6 @@
 {
   "name": "@acp/chat-panel",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Universal AI Chat Panel, Dynamic Container, Buddy Workspace & Action Area Custom Elements for any Angular version or web application.",
   "type": "module",
   "main": "./dist/acp-chat-panel.js",
@@ -13,14 +13,20 @@
       "import": "./dist/acp-chat-panel.js"
     },
     "./styles.css": "./styles/acp-chat-panel.css",
-    "./tokens.css": "./styles/acp-tokens.css"
+    "./tokens.css": "./styles/acp-tokens.css",
+    "./harness": {
+      "types": "./harness.d.ts",
+      "import": "./harness.js"
+    }
   },
   "files": [
     "dist",
     "styles",
     "README.md",
     "AGENT_GUIDE.md",
-    "SPEC_DOC.md"
+    "SPEC_DOC.md",
+    "harness.js",
+    "harness.d.ts"
   ],
   "sideEffects": [
     "./dist/acp-chat-panel.js",

@@ -1,8 +1,9 @@
-# ACP Chat Panel - Universal Application Integration Agent Guide (v0.2.3)
+  getBearerToken: () => runtimeConfig.agentBearerToken || environment.AGENT_FILE_RUN_BEARER_TOKEN
+# ACP Chat Panel - Universal Application Integration Agent Guide (v0.2.4)
 
 ## Goal
 
-Integrate the `@acp/chat-panel` (v0.2.3) package into an application shell so that:
+Integrate the `@acp/chat-panel` (v0.2.4) package into an application shell so that:
 1. The application's existing side navigation has a single AI chat toggle button; create a side panel only when none exists.
 2. The chat panel opens **docked directly next to the sidebar** as a full-height workspace column.
 3. The panel provides **in-conversation search**, **chat history switching**, **in-flight thinking indicator**, **cancellation**, and **interactive suggestion chips**.
@@ -14,7 +15,7 @@ Integrate the `@acp/chat-panel` (v0.2.3) package into an application shell so th
 
 This guide supports **all Angular versions** (both Standalone Angular 14–19+ and NgModule Angular 4–16).
 
-## v0.2.3 behavior rules
+## v0.2.4 behavior rules
 
 1. Chat starts closed. Do not put `open` on `<acp-chat-panel>` in initial markup and do not open it from an initialization hook.
 2. The host application owns exactly one AI Agent/chat toggle button. First locate and reuse the application's existing side navigation, sidebar, navigation rail, side rail, side menu, drawer, or left/right navigation panel, even if it uses a different name. Add the button at the bottom of that existing side panel. Create a new side panel only when the host has no side navigation. Never place the button in or create a top bar, header, toolbar, or other horizontal panel.
@@ -129,7 +130,32 @@ The package exports standard **Web Components (Custom Elements)**. It works in a
 import '@acp/chat-panel';
 ```
 
-### 1.2 Enable `CUSTOM_ELEMENTS_SCHEMA` in Host Module or Component
+### 1.2 Connect to the agent-file-run harness (optional)
+
+For the CampusTrack-compatible agent service, import the provided framework-neutral bridge and connect it to the mounted elements. This replaces a separate prompt transport implementation:
+
+```typescript
+import { connectAcpHarness } from '@acp/chat-panel/harness';
+import { connectAcpHarness } from '@acp/chat-panel/harness';
+import { environment } from './env/environment';
+
+const connection = connectAcpHarness({
+  chat: document.querySelector('acp-chat-panel')!,
+  workspace: document.querySelector('acp-dynamic-container')!,
+  environment,
+  config: {
+    getBearerToken: () => runtimeConfig.agentBearerToken
+  },
+  getContext: () => ({ route: router.url, ...(runtimeConfig.hostContext || {}) }),
+  onNavigate: (href) => router.navigateByUrl(href)
+});
+```
+
+The bearer token and agent file paths are required runtime configuration. Do not commit credentials. The configured service must allow browser CORS requests and the `aetheris.events.v1` WebSocket subprotocol. `getContext` can provide app-specific values such as persona and course options. Call `connection.disconnect()` when the shell is destroyed. The connector renders agent-provided form and Buddy workspace surfaces; host applications still own database saves and authorization.
+The token (or a `getBearerToken` resolver) and agent file paths are required runtime configuration. Do not commit credentials. The configured file-run service must allow browser CORS requests and the `aetheris.events.v1` WebSocket subprotocol. This is the file-run API, not the legacy `ws://localhost:8787` mock-harness socket. `getContext` can provide app-specific values such as persona and course options. Call `connection.disconnect()` when the shell is destroyed. The connector renders agent-provided form and Buddy workspace surfaces; host applications still own database saves and authorization.
+The connector reads its server URL and agent paths from `environment.AGENT_FILE_RUN_API_URL`, `environment.AGENT_FILE_RUN_AGENT_PATH`, and `environment.AGENT_SUGGESTIONS_AGENT_PATH`. The token can come from `environment.AGENT_FILE_RUN_BEARER_TOKEN` or a `getBearerToken` resolver. Configure the file-run URL, token, and main agent path in every build environment; do not commit production credentials. The configured service must allow browser CORS requests and the `aetheris.events.v1` WebSocket subprotocol. `AGENT_HARNESS_WS_URL` is a different legacy chat socket and is not used by this connector. `getContext` can provide app-specific values such as persona and course options. Call `connection.disconnect()` when the shell is destroyed. The connector renders agent-provided form and Buddy workspace surfaces; host applications still own database saves and authorization.
+
+### 1.3 Enable `CUSTOM_ELEMENTS_SCHEMA` in Host Module or Component
 ```typescript
 import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 
@@ -144,28 +170,20 @@ export class AppModule {}
 
 ## Step 2: App Shell Template Composition
 
+The markup below is schematic. Do not copy its `<nav>` as a new sidebar: place the chat toggle in the existing host sidebar discovered by the rule below. Preserve the host's own icon component and its classes/colors; the ACP package contains no navigation icon or sidebar styles.
+The markup below is schematic. Do not copy its `<nav>` as a new sidebar: place the chat toggle in the existing host sidebar discovered by the rule below. Preserve the host's own icon component and its classes/colors; the ACP package contains no navigation icon or sidebar styles.
+
+When using `connectAcpHarness`, let the connector own `messages`, `pending`, prompt submission, suggestions, and cancellation. Do not also bind host handlers that send the same prompt; use only one transport path.
+
 Place the layout inside your shell template (`app.component.html` or `app-shell.component.html`):
 
 ```html
 <div class="app-shell">
   <!-- Existing host top chrome is untouched and intentionally omitted. -->
   <div class="app-shell__body">
-    <!-- EXISTING host side navigation with AI Toggle inserted at its bottom.
-         Reuse the host's actual element and classes; do not create this nav if
-         a sidebar, side rail, drawer, side menu, or navigation panel exists. -->
-    <nav class="app-sidebar">
-      <!-- Existing host navigation items remain here, unchanged. -->
-      <button
-        type="button"
-        class="nav-item nav-item--ai"
-        [class.active]="chatOpen"
-        (click)="onChatOpenChange(!chatOpen)"
-        aria-label="Toggle AI Agent"
-      >
-        <span class="nav-icon">🤖</span>
-        <span class="nav-label">AI Agent</span>
-      </button>
-    </nav>
+    <!-- Keep the application's existing vertical sidebar and all its
+         navigation markup/icons unchanged. Insert one chat-toggle button
+         into that sidebar's existing footer; do not add another <nav>. -->
 
     <!-- Full-Height ACP Workspace Row -->
     <div class="acp-workspace">
@@ -175,18 +193,9 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
           [open]="chatOpen"
           [width]="chatWidth"
           [agentDisplay]="agentName"
-          [pending]="isPending"
-          [messages]="messages"
-          [chatHistory]="chatHistory"
           (acp-open-change)="onChatOpenChange($event.detail)"
           (acp-width-change)="chatWidth = $event.detail"
-          (acp-new-chat)="onNewChat()"
-          (acp-message-sent)="onChatMessage($event.detail)"
-          (acp-suggestion-click)="onSuggestionClick($event.detail)"
           (acp-navigate)="onNavigate($event.detail)"
-          (acp-cancel-request)="onCancelRequest()"
-          (acp-restore-conversation)="onRestoreConversation($event.detail)"
-          (acp-form-requested)="onFormRequested($event.detail)"
         ></acp-chat-panel>
       </div>
 
@@ -258,14 +267,20 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
 ```
 
 ### Sidebar discovery rule
+### Sidebar discovery rule
 
+Before editing the shell, inspect its layout and search for existing vertical
 Before editing the shell, inspect its layout and search for existing vertical
 navigation under names such as `sidebar`, `sidenav`, `side-nav`, `nav-rail`,
 `navigation-rail`, `side-menu`, `drawer`, `menu-panel`, or equivalent
 application-specific components and CSS classes. Insert the single AI Agent
+Insert the single AI Agent
 button into the existing side panel's bottom/footer area, preserving its
-markup, icon library, sizing, active state, accessibility, and styling.
+markup, icon library, sizing, active state, accessibility, and styling. Do not
+replace, recolor, or override the host's navigation icons; verify their normal
+contrast in both inactive and active states after adding the chat button.
 
+Do not add the button to a header, top navigation, top toolbar, masthead, or
 Do not add the button to a header, top navigation, top toolbar, masthead, or
 any horizontal panel. Do not create a second sidebar beside an existing side
 panel. Only if no vertical side navigation exists may the host create a new
@@ -274,6 +289,9 @@ side panel, and that fallback must contain no new top panel or header.
 ---
 
 ## Step 3: Shell Component Controller
+## Step 3: Shell Component Controller
+
+The controller example below demonstrates a host-owned transport only. If using `connectAcpHarness` from Step 1.2, omit its duplicate `onChatMessage` request implementation and let the connector update the chat messages and pending state.
 
 ```typescript
 import { Component, OnInit } from '@angular/core';
@@ -466,7 +484,7 @@ export class AppShellComponent implements OnInit {
 
 ## Step 4: Window Management (Rails & Restore)
 
-The ACP v0.2.3 package retains the advanced window management introduced in v0.2.2:
+The ACP v0.2.4 package retains the advanced window management introduced in v0.2.2:
 
 1. **Minimize (`−`)**: Collapses the pane into a slim vertical rail (`52px` wide) displaying a vertical label and close button.
 2. **Maximize (`⤢`)**: Expands that pane to its configured maximum without closing the adjacent pane.
