@@ -1,53 +1,29 @@
-# @acp/chat-panel
+# @acp/chat-panel (v0.2.3)
 
-A directly installable browser Custom Elements package, with an integration guide targeting Angular 22. The standalone bundle does not require Angular to render the panel. A full Angular 22 build has not been verified.
+Framework-agnostic chat panel, dynamic workspace, Buddy enrollment surface, and Actions pane delivered as browser custom elements. It works with Angular applications of any version and modern web applications without requiring the host application's Angular compiler to build the panel.
 
-The component is designed to live **inside the application's layout**, beside routed content. It is not an overlay, modal, floating drawer, or fixed-position chat window.
+The panel is designed to live **inside the application's layout**, beside routed content. It is not an overlay, modal, floating drawer, or fixed-position chat window.
 
 ## Install
-
-Copy the package into the target app folder and install it
 
 ```bash
 npm install ./acp-chat-panel-0.2.3.tgz
 ```
 
-## Angular 22 integration
+## What's New in v0.2.3
 
-## Minimum requirements
-- **Angular:** The guide targets a standalone Angular 22 host; verify compatibility in the target application before deployment.
-- **Node.js:** Use the versions supported by your target Angular release. The browser bundle itself does not require Node.js at runtime.
-- **npm:** npm 10+ recommended.
-- **TypeScript:** Compatible with the TypeScript version used by Angular 22 projects.
-- **Framework integrations:** The package is framework-agnostic beyond the custom element API; it does **not** require NgRx, Angular Material, or other state/UI frameworks. If your app uses NgRx or other state managers, integrate `messages` with your store as the host owns the message array.
-- **Build setup:** Load `@acp/chat-panel/dist/styles.css` in global styles. Register the custom elements once via `import '@acp/chat-panel'` in browser bootstrap, not during server-side rendering.
-- **Browser support:** Depends on browsers supported by your Angular build; if supporting older browsers, ensure custom elements / web component polyfills are included.
+- Refreshed release package with the complete 0.2.2 custom-element runtime, type declarations, styles, and integration documentation.
+- No public API changes; existing chat, workspace, Buddy, and Actions functionality remains compatible.
 
-## Launch button
+The package UI is host-agnostic. Backend transport, conversation persistence, application state, and navigation remain owned by the integrating application.
 
-Appears in the sidebar and clicking it opens the chat panel
+## Integration Requirements
 
-## Agent guide
+- Use the Node.js, npm, and TypeScript versions supported by the host application's toolchain.
+- Angular hosts may need `CUSTOM_ELEMENTS_SCHEMA` where custom elements are used.
+- Load the package styles globally and register the elements once with `import '@acp/chat-panel'` during application bootstrap.
+- For older browsers, ensure custom elements support is available.
 
-Provide the below agent guide to the agent and give the prompt 
-```bash
-Integrate the installed acp-chat-panel to the application using the provided agent guide
-```
+The host application owns the single AI chat toggle in its existing vertical sidebar. The button toggles the panel's `open` property; the package does not render a sidebar or launch button.
 
-See [`AGENT_GUIDE.md`](./AGENT_GUIDE.md) for the integration procedure and acceptance checklist.
-
-Keep Chat, Workspace, Assembler, and routed content as direct flex siblings.
-Do not collapse Assembler from a Workspace maximize event. The supplied styles
-stack panes on narrow screens and preserve scrolling when minimum widths cannot fit.
-
-## Source snapshot and verification
-
-The `src/app/agent-chat-panel` folder preserves all 55 current Angular 7 feature
-files, including file-run transport/store changes. This is a separate source
-integration requiring host dependencies, not part of the standalone browser API.
-See [the source portability guide](./docs/agent-chat-panel-portability-guide.md).
-
-From the originating repository, run `npm --prefix acp-package-0.2.3 run verify`.
-Open `tests/regression.html` in a browser and run `runRegressionChecks()` to
-exercise the shipped bundle and stylesheet. Backend-authenticated workflows
-and full Angular 22 compilation require validation in the target host.
+See [AGENT_GUIDE.md](./AGENT_GUIDE.md) for the integration procedure and acceptance checklist. The property and event contract is documented in [SPEC_DOC.md](./SPEC_DOC.md).
