@@ -1,4 +1,3 @@
-  getBearerToken: () => runtimeConfig.agentBearerToken || environment.AGENT_FILE_RUN_BEARER_TOKEN
 # ACP Chat Panel - Universal Application Integration Agent Guide (v0.2.4)
 
 ## Goal
@@ -132,10 +131,70 @@ import '@acp/chat-panel';
 
 ### 1.2 Connect to the agent-file-run harness (optional)
 
-For the CampusTrack-compatible agent service, import the provided framework-neutral bridge and connect it to the mounted elements. This replaces a separate prompt transport implementation:
+When harness integration is requested, complete the configuration below before connecting the chat. Do not leave the URL, token, or agent paths unassigned.
+
+#### Integration agent: required configuration check
+
+1. Inspect the host's environment files and runtime configuration before editing the shell. Preserve supplied settings; apply the local defaults below only where values are missing.
+2. Confirm the harness HTTP origin (local default: `http://localhost:4001`), agents checkout location, main agent path, and suggestions agent path. The port belongs in the HTTP origin, not a separate connector setting.
+3. If neither runtime configuration nor `AGENT_FILE_RUN_BEARER_TOKEN` supplies a nonblank token, automatically pause setup and ask: "Please set the same bearer token in the harness's AETHERIS_PLAYGROUND_TOKENS and the app's local runtime configuration, then confirm it is configured. Do not paste the token into this chat." Do not request secrets through chat or an agent question tool, invent a token, or proceed with an empty token.
+4. Have the user verify locally that the client token matches an allowed harness playground token. Never print either value or commit credentials. `token-abc` below is a placeholder, not a production credential.
+5. Keep `OPENROUTER_API_KEY` on the harness server only. Production secrets must use a host-side proxy, not a public frontend bundle.
+
+#### Start the harness
+
+Linux, from the harness checkout:
+
+```bash
+cd /path/to/aetheris
+mix deps.get
+mix compile
+
+export AETHERIS_PLAYGROUND_TOKENS=token-abc
+export AETHERIS_AGENTS_ROOT=/path/to/aetheris-agents
+export AETHERIS_PROVIDER=openrouter
+export OPENROUTER_API_KEY='<use_the_openrouter_api_key_here>'
+export CT_BOT_MODEL=openai/gpt-6-luna
+
+mix do app.config + aetheris server --port 4001
+```
+
+Replace the API key placeholder locally before running it; in Bash, quote the actual value.
+
+PowerShell, from the harness checkout:
+
+```powershell
+cd C:\path\to\aetheris
+mix deps.get
+mix compile
+
+$env:AETHERIS_PLAYGROUND_TOKENS = "token-abc"
+$env:AETHERIS_AGENTS_ROOT = "C:\path\to\aetheris-agents"
+$env:AETHERIS_PROVIDER = "openrouter"
+$env:OPENROUTER_API_KEY = "<use_the_openrouter_api_key_here>"
+$env:CT_BOT_MODEL = "openai/gpt-6-luna"
+
+mix do app.config + aetheris server --port 4001
+```
+
+Keep the server terminal open. `AETHERIS_AGENTS_ROOT` must point to the agents checkout root, not its `ct-bot` subfolder. These commands configure five server environment variables.
+
+#### Configure the CampusTrack client
+
+Add these properties to the host's `environment.ts` object (and equivalent build environments), then start or restart the app:
 
 ```typescript
-import { connectAcpHarness } from '@acp/chat-panel/harness';
+AGENT_FILE_RUN_API_URL: 'http://localhost:4001',
+AGENT_FILE_RUN_BEARER_TOKEN: 'token-abc',
+AGENT_FILE_RUN_AGENT_PATH: 'ct-bot/agents/main.exs',
+AGENT_SUGGESTIONS_AGENT_PATH: 'ct-bot/agents/suggestions.exs',
+```
+
+Use the actual matching token through untracked local/runtime configuration; do not commit it in an environment file. Both agent paths are relative to `AETHERIS_AGENTS_ROOT`. Agent-internal composition paths belong to the agents checkout/configuration; the connector exposes no composition-path setting. Do not invent environment keys for them.
+
+Import the provided framework-neutral bridge and connect it after the shell elements are mounted. This replaces a separate prompt transport implementation. Use the host's actual environment import path and existing runtime configuration/router:
+
+```typescript
 import { connectAcpHarness } from '@acp/chat-panel/harness';
 import { environment } from './env/environment';
 
@@ -144,16 +203,16 @@ const connection = connectAcpHarness({
   workspace: document.querySelector('acp-dynamic-container')!,
   environment,
   config: {
-    getBearerToken: () => runtimeConfig.agentBearerToken
+    getBearerToken: () =>
+      (runtimeConfig.agentBearerToken || '').trim() ||
+      (environment.AGENT_FILE_RUN_BEARER_TOKEN || '').trim()
   },
   getContext: () => ({ route: router.url, ...(runtimeConfig.hostContext || {}) }),
   onNavigate: (href) => router.navigateByUrl(href)
 });
 ```
 
-The bearer token and agent file paths are required runtime configuration. Do not commit credentials. The configured service must allow browser CORS requests and the `aetheris.events.v1` WebSocket subprotocol. `getContext` can provide app-specific values such as persona and course options. Call `connection.disconnect()` when the shell is destroyed. The connector renders agent-provided form and Buddy workspace surfaces; host applications still own database saves and authorization.
-The token (or a `getBearerToken` resolver) and agent file paths are required runtime configuration. Do not commit credentials. The configured file-run service must allow browser CORS requests and the `aetheris.events.v1` WebSocket subprotocol. This is the file-run API, not the legacy `ws://localhost:8787` mock-harness socket. `getContext` can provide app-specific values such as persona and course options. Call `connection.disconnect()` when the shell is destroyed. The connector renders agent-provided form and Buddy workspace surfaces; host applications still own database saves and authorization.
-The connector reads its server URL and agent paths from `environment.AGENT_FILE_RUN_API_URL`, `environment.AGENT_FILE_RUN_AGENT_PATH`, and `environment.AGENT_SUGGESTIONS_AGENT_PATH`. The token can come from `environment.AGENT_FILE_RUN_BEARER_TOKEN` or a `getBearerToken` resolver. Configure the file-run URL, token, and main agent path in every build environment; do not commit production credentials. The configured service must allow browser CORS requests and the `aetheris.events.v1` WebSocket subprotocol. `AGENT_HARNESS_WS_URL` is a different legacy chat socket and is not used by this connector. `getContext` can provide app-specific values such as persona and course options. Call `connection.disconnect()` when the shell is destroyed. The connector renders agent-provided form and Buddy workspace surfaces; host applications still own database saves and authorization.
+The connector reads the four client environment keys above. A `getBearerToken` resolver takes precedence over the environment token, so retain the fallback shown here. The configured service must allow the app origin through CORS and the `aetheris.events.v1` WebSocket subprotocol. `AGENT_HARNESS_WS_URL` is a different legacy chat socket and is not used by this connector. `getContext` can provide app-specific values such as persona and course options. Call `connection.disconnect()` when the shell is destroyed. The connector renders agent-provided form and Buddy workspace surfaces; host applications still own database saves and authorization.
 
 ### 1.3 Enable `CUSTOM_ELEMENTS_SCHEMA` in Host Module or Component
 ```typescript
@@ -521,6 +580,10 @@ tokenized rail width.
 
 ## Step 5: Verification Checklist
 
+- [ ] When harness integration is enabled, the HTTP origin includes the correct port and both agent files resolve relative to the agents checkout root.
+- [ ] A missing bearer token pauses integration and prompts for direct local configuration without exposing secrets in chat.
+- [ ] The client bearer matches an allowed harness playground token; the model API key remains server-side.
+- [ ] With the harness running, a chat prompt completes a file-run request and suggestions use the configured suggestions agent; check CORS/authentication failures if either fails.
 - [ ] Chat panel renders docked next to sidebar and fills full viewport height (`100%`).
 - [ ] Composer stays anchored to the bottom.
 - [ ] In-flight thinking indicator pill (`Thinking...`) appears when `[pending]="true"`.
