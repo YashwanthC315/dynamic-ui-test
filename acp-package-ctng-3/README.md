@@ -51,3 +51,9 @@ The host owns the existing vertical sidebar and its single launch button. Keep c
 Do not bind static `messages` or `pending` values or handle `acp-message-sent` separately while the harness connector is active. Angular hosts need `CUSTOM_ELEMENTS_SCHEMA`. The host remains responsible for router navigation, authorization, domain saves, and any persistence beyond the connector's in-memory history.
 
 See [AGENT_GUIDE.md](./AGENT_GUIDE.md) for the full shell integration and [SPEC_DOC.md](./SPEC_DOC.md) for element and event contracts.
+
+
+### Example prompt
+
+Integrate the installed @acp/chat-panel package using AGENT_GUIDE.md. Configure the harness connection using this app’s existing runtime configuration. If it has no suitable configuration, add a local-only configuration mechanism and use it with getBearerToken(). Set AGENT_FILE_RUN_BEARER_TOKEN from that configuration; do not invent, guess, or commit a token. It must match a token accepted by the harness via AETHERIS_PLAYGROUND_TOKENS. If the local token is unavailable, leave it unset and tell me where to provide it. Verify a prompt receives a harness response before considering integration complete.
+
