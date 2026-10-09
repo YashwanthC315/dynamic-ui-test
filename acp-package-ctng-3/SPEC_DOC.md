@@ -16,13 +16,13 @@
 
 This document describes the behavior, public API, layout contract, and host integration required to recreate the `@acp/chat-panel` package used in this folder.
 
-The package is a framework-agnostic set of browser Custom Elements. It provides a docked AI chat column plus optional dynamic-form, Buddy enrollment, and activity/action panes. It is not an Angular component library and it is not an overlay or modal system.
+The package is a framework-agnostic set of browser Custom Elements. It provides a docked AI chat column plus optional dynamic-form/information Workspace, Buddy enrollment, and Assembler (activity) panes. It is not an Angular component library and it is not an overlay or modal system.
 
 ## 2. Package Identity
 
 - Package name: `@acp/chat-panel`
-- Archive currently stored here: `acp-chat-panel-0.2.4.tgz`
-- Manifest/runtime version inside the archive: `0.2.4`
+- Archive currently stored here: `acp-chat-panel-0.2.5.tgz`
+- Manifest/runtime version inside the archive: `0.2.5`
 - Entry module: `dist/acp-chat-panel.js`
 - Type declarations: `dist/acp-chat-panel.d.ts`
 - Main stylesheet: `styles/acp-chat-panel.css`
@@ -176,7 +176,8 @@ Methods: `collapse()`, `maximize()`, `restore()`, `close()`.
 
 The standard form field types are `text`, `number`, `date`, `checkbox`, `select`, and `textarea`. Fields can be required, disabled, placeholder-driven, option-backed, and constrained by `min`, `max`, or `maxLength`.
 
-The container also provides a kebab action to request the Actions pane and emits form submission data. A minimized workspace becomes a clickable rail with a vertical label; restoring it returns to its normal width.
+- The container also provides a kebab action to request the Assembler pane and emits form submission data. A minimized workspace becomes a clickable rail with a vertical label; restoring it returns to its normal width.
+- When the harness returns a non-form information surface, the container renders its title, description/summary, data fields, and rows/records as escaped text. Hosts can use `onSurface` for richer domain-specific rendering.
 
 ### 6.3 `<buddy-enrol-workspace-surface>`
 
@@ -192,7 +193,7 @@ Properties:
 - `parseInFlight: boolean`
 - `checkInFlight: boolean`
 
-It supports raw-text parsing, record search/selection, validation/checking, editable enrollment data, clear/cancel, single submit, and batch submit. It can emit activity requests for the Actions pane.
+It supports raw-text parsing, record search/selection, validation/checking, editable enrollment data, clear/cancel, single submit, and batch submit. It can emit activity requests for the Assembler pane.
 
 ### 6.4 `<acp-actions-pane>`
 
@@ -357,9 +358,10 @@ The optional `@acp/chat-panel/harness` entry point provides `connectAcpHarness()
 
 1. `POST {baseUrl}/api/playground/agent-file-runs` with `{ agent_path, user_prompt }` and a bearer token.
 2. Read text reply frames from `GET {baseUrl}/api/playground/runs/{run_id}/events/ws` using the `aetheris.events.v1` and encoded bearer subprotocols.
-3. Parse assistant JSON (`messages`, `actions`, and optional `surface`) and update the chat/workspace custom elements.
+3. Parse assistant JSON (`messages`, `actions`, and optional `surface`) and update the chat, Workspace, or Assembler custom elements. Form/Buddy surfaces open Workspace; other information surfaces use its escaped generic renderer; `activity-log` surfaces populate and open Assembler.
 
-`baseUrl` defaults to `http://localhost:4001`; `bearerToken` and `agentPath` must be supplied by the host. `suggestionsAgentPath` is optional. This is not the legacy mock-harness `ws://localhost:8787` chat socket. The browser host must satisfy CORS and WebSocket origin policy. Do not bundle production credentials; use a host proxy when the service credential is not intended for browser exposure. The host remains responsible for domain-specific context, database saves, and application routing.
+Pass the adjacent elements as `workspace` and `actions` in `connectAcpHarness`. The `actions` target is an `<acp-actions-pane>`; its title defaults to “Assembler” for an `activity-log` surface. Existing `acp-actions-requested` and `acp-open-actions` events remain supported.
+
 `baseUrl` defaults to `http://localhost:4001`; supply `agentPath` and either `bearerToken` or `getBearerToken`. `suggestionsAgentPath` is optional. This is not the legacy mock-harness `ws://localhost:8787` chat socket. The browser host must satisfy CORS and WebSocket origin policy. Do not bundle production credentials; use a host proxy when the service credential is not intended for browser exposure. The host remains responsible for domain-specific context, database saves, and application routing.
 The connector accepts the host `environment` object and reads `AGENT_FILE_RUN_API_URL`, `AGENT_FILE_RUN_BEARER_TOKEN`, `AGENT_FILE_RUN_AGENT_PATH`, and optional `AGENT_SUGGESTIONS_AGENT_PATH`. Explicit `config` values override environment values; `getBearerToken` can resolve the current session token. The API URL, token, and main agent path are required. `AGENT_HARNESS_WS_URL` (commonly port 8787) is a distinct legacy chat socket and is not the agent-file-run API. The browser host must satisfy CORS and WebSocket origin policy. Do not bundle production credentials; use a host proxy when the service credential is not intended for browser exposure. The host remains responsible for domain-specific context, database saves, and application routing.
 
@@ -367,14 +369,14 @@ The connector accepts the host `environment` object and reads `AGENT_FILE_RUN_AP
 
 ### Angular installation
 
-1. Install the local archive: `npm install ./acp-chat-panel-0.2.4.tgz`.
+1. Install the local archive: `npm install ./acp-chat-panel-0.2.5.tgz`.
 2. Import `@acp/chat-panel` once from the application bootstrap entry point.
 3. Add `CUSTOM_ELEMENTS_SCHEMA` to the Angular module/component that contains the custom elements.
 4. Load `tokens.css` and `styles.css` globally.
 5. Add the AI button to the bottom of the existing vertical sidebar.
-6. Mount Chat in the shell beside the sidebar and mount Workspace/Actions in the stage.
-7. Bind all input properties and output events listed above.
-8. Connect `acp-message-sent` to the host's agent transport.
+6. Mount Chat in the shell beside the sidebar and mount Workspace/Assembler in the stage immediately to the right of Chat.
+7. Bind shell layout state and pane events; do not bind connector-owned chat messages, pending state, form specs, or Workspace surfaces.
+8. Initialize `connectAcpHarness` with `chat`, `workspace`, and `actions` in `ngAfterViewInit`, then disconnect it when the shell is destroyed.
 9. Verify initial closed state, independent close state, resizing, rails, form requests, activity requests, and routed-content preservation.
 
 ### Mount, hide, unmount

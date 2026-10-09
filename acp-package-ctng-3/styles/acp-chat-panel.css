@@ -913,6 +913,57 @@ acp-dynamic-container {
   overflow-y: auto;
   padding: 16px;
 }
+.acp-info-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 100%;
+  color: var(--acp-text-primary);
+}
+.acp-info-surface__description {
+  margin: 0;
+  color: var(--acp-text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.acp-info-surface__data {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid var(--acp-border-color);
+}
+.acp-info-surface__row {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--acp-border-color);
+}
+.acp-info-surface__row dt {
+  color: var(--acp-text-secondary);
+  font-weight: 600;
+}
+.acp-info-surface__row dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.acp-info-surface__items {
+  display: grid;
+  gap: 8px;
+}
+.acp-info-surface__items pre {
+  max-width: 100%;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--acp-border-color);
+  background: var(--acp-panel-bg);
+  color: var(--acp-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 .acp-form-shell {
   position: relative;

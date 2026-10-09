@@ -1,61 +1,53 @@
-  getBearerToken: () => runtimeConfig.agentBearerToken || environment.AGENT_FILE_RUN_BEARER_TOKEN
-# @acp/chat-panel (v0.2.4)
+# @acp/chat-panel (v0.2.5)
 
-Framework-agnostic chat panel, dynamic workspace, Buddy enrollment surface, and Actions pane delivered as browser custom elements. The package works with Angular and other modern web applications; it does not require the host application's Angular compiler.
+Framework-agnostic chat, dynamic workspace, Buddy enrollment surface, and Assembler (activity) pane delivered as browser custom elements. Angular and other modern web applications can use the package without compiling its components.
 
 ## Install
 
 ```bash
-npm install ./acp-chat-panel-0.2.4.tgz
+npm install ./acp-chat-panel-0.2.5.tgz
 ```
 
-## Harness Connector
+Import the elements and styles once in the application entry point:
 
-Version 0.2.4 adds an optional browser connector for the agent-file-run service used by the CampusTrack host. It sends a prompt to `POST /api/playground/agent-file-runs`, then reads the reply from `/api/playground/runs/{run_id}/events/ws`. Replies can update chat messages and render agent-provided student, organization, or Buddy workspace surfaces.
-
-Register the custom elements and connector once during application startup:
-
-```javascript
+```typescript
 import '@acp/chat-panel';
 import '@acp/chat-panel/tokens.css';
 import '@acp/chat-panel/styles.css';
-import { connectAcpHarness } from '@acp/chat-panel/harness';
-import { connectAcpHarness } from '@acp/chat-panel/harness';
-import { environment } from './env/environment';
+```
 
-const chat = document.querySelector('acp-chat-panel');
-const workspace = document.querySelector('acp-dynamic-container');
+## Harness Connection
 
-const harnessConnection = connectAcpHarness({
-  chat,
-  workspace,
+`connectAcpHarness` posts to `POST /api/playground/agent-file-runs` and streams replies from `/api/playground/runs/{run_id}/events/ws`. It owns chat messages, pending state, suggestions, history, cancellation, and supported harness surface dispatch. Pass the chat, dynamic workspace, and Assembler elements:
+
+```typescript
+import { connectAcpHarness } from '@acp/chat-panel/harness';
+
+const connection = connectAcpHarness({
+  chat: document.querySelector('acp-chat-panel'),
+  workspace: document.querySelector('acp-dynamic-container'),
+  actions: document.querySelector('acp-actions-pane'),
   environment,
   config: {
-    getBearerToken: () => runtimeConfig.agentBearerToken
+    getBearerToken: () => runtimeConfig.agentBearerToken || environment.AGENT_FILE_RUN_BEARER_TOKEN
   },
-  getContext: () => ({
-    route: window.location.pathname,
-    persona: runtimeConfig.persona || undefined,
-    formOptions: runtimeConfig.formOptions || undefined
-  }),
-  onNavigate: (href) => applicationRouter.navigateByUrl(href)
+  getContext: () => ({ route: window.location.pathname }),
+  onNavigate: (href) => applicationRouter.navigateByUrl(href),
+  onSurface: (surface) => {
+    if (surface.type === 'activity-log') setAssemblerOpen(true);
+    else if (surface.title) setWorkspaceOpen(true);
+  }
 });
 ```
 
-Provide the bearer token through runtime configuration, `getBearerToken`, or a host-side proxy. `getBearerToken` is called for each run so it can read the current session token. Do not commit credentials to source control or embed production secrets in a public frontend bundle. The agent API must allow the app origin and the authenticated WebSocket subprotocol. The connector defaults the API origin to `http://localhost:4001`; a token and `agentPath` are required. This uses the file-run API, not the legacy `ws://localhost:8787` mock-harness socket.
-The connector reads `AGENT_FILE_RUN_API_URL`, `AGENT_FILE_RUN_BEARER_TOKEN`, `AGENT_FILE_RUN_AGENT_PATH`, and `AGENT_SUGGESTIONS_AGENT_PATH` from the supplied environment object. A `config` value overrides the corresponding environment setting; use `getBearerToken` to resolve a current session token. The API URL, token, and main agent path must be configured. Do not commit credentials or embed production secrets in a public frontend bundle; use a host-side proxy when needed. The API must allow the app origin and authenticated WebSocket subprotocol. `AGENT_HARNESS_WS_URL` (for example `ws://localhost:8787`) is a separate legacy chat socket and is not the file-run endpoint used by this connector.
+The `actions` option is the `<acp-actions-pane>` custom element. The connector maps `activity-log` surfaces to its items and menu actions, opens it, and labels it “Assembler” unless the surface provides a title. Existing `acp-actions-requested` and `acp-open-actions` events also open it.
 
-`getContext` is optional. Supplying the active route and available domain context (for example `formOptions.courses`) gives the agent the same host context it receives in CampusTrack. Conversation history is held in memory by this connector; persistent history and application-specific form saves remain host responsibilities.
+Set `AGENT_FILE_RUN_API_URL`, `AGENT_FILE_RUN_AGENT_PATH`, and a runtime bearer token. `AGENT_SUGGESTIONS_AGENT_PATH` is optional. `getBearerToken` runs for each request; do not commit production credentials or embed them in a public bundle. `AGENT_HARNESS_WS_URL` is a separate legacy socket and is not used by this connector.
 
-## Sidebar and Icons
+## Shell Layout
 
-The package does not create or style navigation. Reuse the application's existing vertical sidebar and icon components; add only the chat toggle, preserving the host's icon markup, classes, sizing, and colors. Do not replace the sidebar or apply ACP styles to its navigation icons.
+The host owns the existing vertical sidebar and its single launch button. Keep chat closed initially; clicking the button opens chat directly beside the sidebar. Mount Workspace and Assembler in the shell stage immediately to the right of chat, with routed content remaining mounted in that stage. Harness form/Buddy surfaces open Workspace; activity-log surfaces open Assembler. Informational blocks render in chat, while application-specific information surfaces can be handled through `onSurface` and mounted by the host in its Workspace slot.
 
-## Host Requirements
+Do not bind static `messages` or `pending` values or handle `acp-message-sent` separately while the harness connector is active. Angular hosts need `CUSTOM_ELEMENTS_SCHEMA`. The host remains responsible for router navigation, authorization, domain saves, and any persistence beyond the connector's in-memory history.
 
-- Load the package styles globally and register the custom elements once.
-- Angular hosts may need `CUSTOM_ELEMENTS_SCHEMA` where custom elements appear in templates.
-- The browser must support Custom Elements, ES modules, `fetch`, and WebSockets; older browsers may need polyfills.
-- The host owns navigation, authorization configuration, persistent conversation history, and saves to application APIs.
-
-See [AGENT_GUIDE.md](./AGENT_GUIDE.md) for shell integration and [SPEC_DOC.md](./SPEC_DOC.md) for package contracts.
+See [AGENT_GUIDE.md](./AGENT_GUIDE.md) for the full shell integration and [SPEC_DOC.md](./SPEC_DOC.md) for element and event contracts.

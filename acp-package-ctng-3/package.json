@@ -1,7 +1,7 @@
 {
   "name": "@acp/chat-panel",
-  "version": "0.2.4",
-  "description": "Universal AI Chat Panel, Dynamic Container, Buddy Workspace & Action Area Custom Elements for any Angular version or web application.",
+  "version": "0.2.5",
+  "description": "Universal AI Chat Panel, Dynamic Workspace, Buddy Surface & Assembler Custom Elements with Agent Harness integration.",
   "type": "module",
   "main": "./dist/acp-chat-panel.js",
   "module": "./dist/acp-chat-panel.js",
