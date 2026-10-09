@@ -44,6 +44,8 @@ The workspace row must follow this exact horizontal sequence:
 +---------+--------------------+--------------------------------------------------+
 ```
 
+**Workspace positioning is stage-relative:** `.acp-workspace__stage` must be `position: relative`, and `.acp-workspace__surface-layer` must be its absolute, full-inset child (`top`, `right`, `bottom`, and `left` all `0`). The stage follows the chat column in the workspace row, so the surface layer's left edge is immediately beside chat. Keep `<acp-dynamic-container>` inside this layer; do not position it `fixed`, anchor it to the viewport, or place it as a sibling of the stage. The package stylesheet provides this stage-relative layout; do not override it with app-level positioning rules.
+
 ### Prohibited Layouts (Do NOT do these):
 - ❌ **Wrong 1**: `sidebar | routed content | chat on far right` (chat must be on the left of content).
 - ❌ **Wrong 2**: Floating dialog, drawer overlay, modal, or CDK overlay.
@@ -135,6 +137,8 @@ import '@acp/chat-panel';
 ### 1.2 Configure Client Environment (`src/environments/environment.ts`)
 Ensure your environment file exports the file-run harness variables required by `@acp/chat-panel/harness`:
 
+The configured `AETHERIS_PLAYGROUND_TOKENS` value on the harness is authoritative. Set `AGENT_FILE_RUN_BEARER_TOKEN` to that exact token; do not let an installer invent, assume, or independently generate a client token. If setup generates a token, generate it once and configure the same value on both sides. If the installer cannot configure the harness, require the operator to provide the existing harness token through the host's runtime configuration. Do not silently substitute a placeholder or continue with a mismatched value.
+
 ```typescript
 export const environment = {
   production: false,
@@ -142,13 +146,13 @@ export const environment = {
 
   // Agent File-Run Harness endpoints:
   AGENT_FILE_RUN_API_URL: 'http://localhost:4001',
-  AGENT_FILE_RUN_BEARER_TOKEN: 'your-bearer-token',
+  AGENT_FILE_RUN_BEARER_TOKEN: 'EXACT_TOKEN_CONFIGURED_FOR_AETHERIS_PLAYGROUND_TOKENS',
   AGENT_FILE_RUN_AGENT_PATH: 'ct-bot/agents/main.exs',
   AGENT_SUGGESTIONS_AGENT_PATH: 'ct-bot/agents/suggestions.exs'
 };
 ```
 
-> **Security Note:** Do not commit production secrets to Git. Use untracked environment overrides (e.g. `environment.local.ts`) or pass tokens via runtime configuration (`getBearerToken`).
+> **Security Note:** Do not commit production secrets to Git or bundle a long-lived production token into browser code. For local development, use an untracked environment override. In production, supply an appropriately scoped/short-lived token through the host's authenticated runtime configuration (`getBearerToken`) or use a backend proxy. The browser must still receive a token accepted by the harness.
 
 ### 1.3 Start the Agent Harness Server
 
@@ -158,7 +162,7 @@ cd /path/to/aetheris
 mix deps.get
 mix compile
 
-export AETHERIS_PLAYGROUND_TOKENS=your-bearer-token
+export AETHERIS_PLAYGROUND_TOKENS=EXACT_TOKEN_CONFIGURED_FOR_AETHERIS_PLAYGROUND_TOKENS
 export AETHERIS_AGENTS_ROOT=/path/to/aetheris-agents
 export AETHERIS_PROVIDER=openrouter
 export OPENROUTER_API_KEY='<your_openrouter_api_key>'
@@ -173,7 +177,7 @@ cd C:\path\to\aetheris
 mix deps.get
 mix compile
 
-$env:AETHERIS_PLAYGROUND_TOKENS = "your-bearer-token"
+$env:AETHERIS_PLAYGROUND_TOKENS = "EXACT_TOKEN_CONFIGURED_FOR_AETHERIS_PLAYGROUND_TOKENS"
 $env:AETHERIS_AGENTS_ROOT = "C:\path\to\aetheris-agents"
 $env:AETHERIS_PROVIDER = "openrouter"
 $env:OPENROUTER_API_KEY = "<your_openrouter_api_key>"
@@ -473,6 +477,7 @@ The ACP v0.2.4 package retains advanced window management:
 
 | Symptom | Cause | Solution |
 |---|---|---|
+| Agent requests fail with an authorization error or the agent does not respond | `AGENT_FILE_RUN_BEARER_TOKEN` is missing or does not exactly match a token accepted by the harness through `AETHERIS_PLAYGROUND_TOKENS`. | Compare the configured values securely; update the host runtime token to match the harness, or configure the same chosen token on both sides. Do not generate a replacement only on the client. |
 | AI chat launch button is missing or does nothing in one integrated app | The existing rendered sidebar was not updated, or the button is not wired to the chat's `open` state. | Trace that app's actual navigation component (including responsive variants), add the button to its footer, bind it to `chatOpen`, and verify open/close/reopen in that app. |
 | Chat shows only canned introductory text ("Hello! How can I assist you...") | `[messages]="messages"` is bound in the template HTML. | Remove `[messages]` and `[pending]` from `<acp-chat-panel>`. Let `connectAcpHarness` own message state. |
 | Chat does not respond to user input or calls `/api/agent/chat` | `(acp-message-sent)` is bound to a mock method. | Remove `(acp-message-sent)` from `<acp-chat-panel>`. The bridge automatically captures `acp-message-sent` events. |
@@ -481,6 +486,7 @@ The ACP v0.2.4 package retains advanced window management:
 | Chat displays `Agent reply WebSocket failed.` | The harness server (port 4001) is not running or CORS rejected the connection. | Start the harness server (`mix do app.config + aetheris server --port 4001`) and verify origins. |
 
 ### Verification Checklist
+- [ ] `AGENT_FILE_RUN_BEARER_TOKEN` is explicitly provided and exactly matches a token accepted by the harness via `AETHERIS_PLAYGROUND_TOKENS`; no client-side default or independently generated token is used.
 - [ ] In every integrated app, the AI Agent launch button is visible at the bottom/footer of the app's existing sidebar/navigation panel (not a replacement sidebar or top bar).
 - [ ] In every integrated app, clicking the sidebar button opens chat, clicking it again closes chat, and the chat's own close control synchronizes state so the sidebar button reopens it.
 - [ ] In `environment.ts`, `AGENT_FILE_RUN_API_URL` (e.g. `http://localhost:4001`), `AGENT_FILE_RUN_BEARER_TOKEN`, and `AGENT_FILE_RUN_AGENT_PATH` are configured.

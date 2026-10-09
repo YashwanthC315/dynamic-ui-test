@@ -40,7 +40,7 @@ const harnessConnection = connectAcpHarness({
 });
 ```
 
-Provide the bearer token through runtime configuration, `getBearerToken`, or environment settings. `getBearerToken` is called for each run so it can read the current session token. Do not commit credentials to source control or embed production secrets in a public frontend bundle. The connector defaults the API origin to `http://localhost:4001`; a non-blank token and `agentPath` are required.
+Provide the bearer token through runtime configuration, `getBearerToken`, or environment settings. It must exactly match a token accepted by the harness through `AETHERIS_PLAYGROUND_TOKENS`; the client must not assume or independently generate this value. If setup generates a token, configure that same value on both sides. `getBearerToken` is called for each run so it can read the current session token. Do not commit credentials to source control or embed production secrets in a public frontend bundle. The connector defaults the API origin to `http://localhost:4001`; a non-blank token and `agentPath` are required.
 
 The connector reads `AGENT_FILE_RUN_API_URL`, `AGENT_FILE_RUN_BEARER_TOKEN`, `AGENT_FILE_RUN_AGENT_PATH`, and `AGENT_SUGGESTIONS_AGENT_PATH` from the supplied environment object. A `config` value overrides the corresponding environment setting. Note that `AGENT_HARNESS_WS_URL` (for example `ws://localhost:8787`) is a separate legacy chat socket and is not the file-run endpoint used by this connector.
 
