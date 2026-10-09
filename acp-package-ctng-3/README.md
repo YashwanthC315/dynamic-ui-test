@@ -58,3 +58,7 @@ The package does not create or style navigation. Reuse the application's existin
 - The host owns navigation, authorization configuration, persistent conversation history, and saves to application APIs.
 
 See [AGENT_GUIDE.md](./AGENT_GUIDE.md) for shell integration and [SPEC_DOC.md](./SPEC_DOC.md) for package contracts.
+
+### Example prompt
+
+Integrate the installed @acp/chat-panel package using AGENT_GUIDE.md. Configure the harness connection using this app’s existing runtime configuration. If it has no suitable configuration, add a local-only configuration mechanism and use it with getBearerToken(). Set AGENT_FILE_RUN_BEARER_TOKEN from that configuration; do not invent, guess, or commit a token. It must match a token accepted by the harness via AETHERIS_PLAYGROUND_TOKENS. If the local token is unavailable, leave it unset and tell me where to provide it. Verify a prompt receives a harness response before considering integration complete.
