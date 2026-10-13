@@ -1,30 +1,33 @@
-# ACP Chat Panel - Universal Application Integration Agent Guide (v0.2.2)
+# ACP Chat Panel - Universal Application Integration Agent Guide (v0.2.10)
 
 ## Goal
 
-Integrate the `@acp/chat-panel` (v0.2.2) package into an application shell so that:
+Integrate the `@acp/chat-panel` (v0.2.10) package into an application shell so that:
 1. The application's existing side navigation has a single AI chat toggle button; create a side panel only when none exists.
 2. The chat panel opens **docked directly next to the sidebar** as a full-height workspace column.
-3. The panel provides **in-conversation search**, **chat history switching**, **in-flight thinking indicator**, **cancellation**, and **interactive suggestion chips**.
-4. The application's routed content fills the remaining workspace space without internal layout reflow.
-5. Dynamic form surfaces and the Buddy workspace open immediately to the right of the chat panel inside the workspace stage.
-6. Workspace and Actions panes support **compact rail collapsing (`−`)**, **wide expansion (`⤢`)**, **kebab overflow menus (`⋮`)**, and **one-click rail restore**.
-7. The post-commit Action Area (activity log) renders status items and action menus.
+3. The panel connects to the **Agent Harness** via `@acp/chat-panel/harness`, providing real-time streaming replies, suggestion chips, conversation history, cancellation, and in-conversation search.
+4. The application's routed content remains full width beneath Workspace and Assembler and does not shift when either pane opens.
+5. Dynamic form surfaces and the Buddy workspace open immediately to the right of the chat panel, over the routed content inside the workspace stage.
+6. Workspace and Assembler panes support **compact rail collapsing (`−`)**, **wide expansion (`⤢`)**, **kebab overflow menus (`⋮`)**, and **one-click rail restore**.
+7. The post-commit Assembler (activity log) renders status items and action menus.
 8. All styling is governed strictly by **Design Tokens** (`--acp-*` CSS variables) with fully opaque surfaces.
 
 This guide supports **all Angular versions** (both Standalone Angular 14–19+ and NgModule Angular 4–16).
 
-## v0.2.2 behavior rules
+---
 
-1. Chat starts closed. Do not put `open` on `<acp-chat-panel>` in initial markup and do not open it from an initialization hook.
-2. The host application owns exactly one AI Agent/chat toggle button. First locate and reuse the application's existing side navigation, sidebar, navigation rail, side rail, side menu, drawer, or left/right navigation panel, even if it uses a different name. Add the button at the bottom of that existing side panel. Create a new side panel only when the host has no side navigation. Never place the button in or create a top bar, header, toolbar, or other horizontal panel.
-3. The host button toggles the chat element's `open` property. The element's close control emits `acp-open-change` with `false`.
-4. Opening Chat never opens Workspace or Actions.
-5. Workspace opens only after `acp-form-requested` or an equivalent explicit host update. An explicit user close is respected.
-6. An activity-bearing `acp-actions-requested` opens Actions beside Workspace. Actions stays open until the user explicitly minimizes or closes it.
-7. Chat, Workspace, and Actions are independently resizable. Bind `acp-width-change`, `acp-form-width-change`, and `acp-actions-width-change` when width state is stored by the host.
-8. Workspace and Actions are also resizable in height via a bottom edge and a bottom-right corner grip (width + height). Heights default to the full column; bind `acp-form-height-change` (`formHeight`) and `acp-actions-height-change` (`height`) when height state is stored by the host. Height grips are hidden while a pane is minimized or maximized.
-9. Closed elements occupy zero width. Do not reserve fixed-width shell columns around closed elements.
+## v0.2.10 behavior rules
+
+1. **Chat starts closed**: Do not put `open` on `<acp-chat-panel>` in initial markup and do not open it from an initialization hook.
+2. **Single toggle button**: The host application owns exactly one AI Agent/chat toggle button. First locate and reuse the application's existing side navigation, sidebar, navigation rail, side rail, side menu, drawer, or left/right navigation panel, even if it uses a different name. Add the button at the bottom of that existing side panel. Create a new side panel only when the host has no side navigation. Never place the button in or create a top bar, header, toolbar, or other horizontal panel.
+3. **Open toggle control**: The host button toggles the chat element's `open` property. The element's close control emits `acp-open-change` with `false`.
+4. **Chat independent of Workspace/Assembler**: Opening Chat never opens Workspace or Assembler.
+5. **Workspace opens on request**: Workspace opens only after `acp-form-requested`, harness surface detection, or an equivalent explicit host update. An explicit user close is respected.
+6. **Assembler is independent**: An activity-bearing `acp-actions-requested`, `acp-open-actions`, or harness `activity-log` surface opens the Assembler beside Workspace. It stays open until the user explicitly minimizes or closes it.
+7. **Independent pane resizing**: Chat, Workspace, and Assembler are independently resizable. Bind `acp-width-change`, `acp-form-width-change`, and `acp-actions-width-change` when width state is stored by the host.
+8. **Height resizing**: Workspace and Actions are also resizable in height via a bottom edge and a bottom-right corner grip (width + height). Heights default to the full column; bind `acp-form-height-change` (`formHeight`) and `acp-actions-height-change` (`height`) when height state is stored by the host. Height grips are hidden while a pane is minimized or maximized.
+9. **Zero width when closed**: Closed elements occupy zero width. Do not reserve fixed-width shell columns around closed elements.
+10. **Harness connection ownership**: When using `connectAcpHarness`, the connector owns message history, pending states, streaming replies, suggestion chips, and surface dispatching. The host **must not** bind `[messages]`, `[pending]`, or `(acp-message-sent)` in the template, as doing so overrides live responses with static data.
 
 ---
 
@@ -34,16 +37,16 @@ The workspace row must follow this exact horizontal sequence:
 
 ```text
 +---------+--------------------+--------------------------------------------------+
-| sidebar | chat (full height) | stage                                            |
-| [AI]    | docked next to     | - dynamic form / Buddy workspace (with - / ⤢)    |
-| button  | sidebar            | - Actions pane (with - / ⤢ / ⋮)                  |
-|         |                    | - routed content (scrolls, no grid reflow)       |
+| sidebar | chat (full height) | stage (routed content remains full width)        |
+| [AI]    | docked next to     | - Workspace / Assembler overlay routed content  |
+| button  | sidebar            |   and open beside Chat (with - / ⤢ / ⋮)           |
+|         |                    | - routed content stays in place underneath       |
 +---------+--------------------+--------------------------------------------------+
 ```
 
 ### Prohibited Layouts (Do NOT do these):
 - ❌ **Wrong 1**: `sidebar | routed content | chat on far right` (chat must be on the left of content).
-- ❌ **Wrong 2**: Floating dialog, drawer overlay, modal, or CDK overlay.
+- ❌ **Wrong 2**: Floating dialog, viewport-level drawer, modal, or CDK overlay. Workspace and Assembler are docked overlays inside the stage.
 - ❌ **Wrong 3**: Dynamic forms opening at the far-right edge of the viewport instead of next to chat.
 - ❌ **Wrong 4**: Placing the chat inside a routed page component (it must live in the app shell).
 - ❌ **Wrong 5**: Replacing or closing Workspace when Actions opens (they are persistent adjacent columns).
@@ -120,16 +123,66 @@ acp-dynamic-container {
 
 ---
 
-## Step 1: Package Registration & Schema
+## Step 1: Package Registration & Harness Configuration
 
-The package exports standard **Web Components (Custom Elements)**. It works in any Angular version without framework version mismatch.
+The package exports standard **Web Components (Custom Elements)** and a framework-agnostic **Harness Bridge (`@acp/chat-panel/harness`)**.
 
 ### 1.1 Import Bundle in App Entrypoint (`src/main.ts`)
 ```typescript
 import '@acp/chat-panel';
 ```
 
-### 1.2 Enable `CUSTOM_ELEMENTS_SCHEMA` in Host Module or Component
+### 1.2 Configure Client Environment (`src/environments/environment.ts`)
+Ensure your environment file exports the file-run harness variables required by `@acp/chat-panel/harness`:
+
+```typescript
+export const environment = {
+  production: false,
+  // Other app config...
+
+  // Agent File-Run Harness endpoints:
+  AGENT_FILE_RUN_API_URL: 'http://localhost:4001',
+  AGENT_FILE_RUN_BEARER_TOKEN: 'your-bearer-token',
+  AGENT_FILE_RUN_AGENT_PATH: 'ct-bot/agents/main.exs',
+  AGENT_SUGGESTIONS_AGENT_PATH: 'ct-bot/agents/suggestions.exs'
+};
+```
+
+> **Security Note:** Do not commit production secrets to Git. Use untracked environment overrides (e.g. `environment.local.ts`) or pass tokens via runtime configuration (`getBearerToken`).
+
+### 1.3 Start the Agent Harness Server
+
+**Linux/macOS:**
+```bash
+cd /path/to/aetheris
+mix deps.get
+mix compile
+
+export AETHERIS_PLAYGROUND_TOKENS=your-bearer-token
+export AETHERIS_AGENTS_ROOT=/path/to/aetheris-agents
+export AETHERIS_PROVIDER=openrouter
+export OPENROUTER_API_KEY='<your_openrouter_api_key>'
+export CT_BOT_MODEL=openai/gpt-4o
+
+mix do app.config + aetheris server --port 4001
+```
+
+**Windows PowerShell:**
+```powershell
+cd C:\path\to\aetheris
+mix deps.get
+mix compile
+
+$env:AETHERIS_PLAYGROUND_TOKENS = "your-bearer-token"
+$env:AETHERIS_AGENTS_ROOT = "C:\path\to\aetheris-agents"
+$env:AETHERIS_PROVIDER = "openrouter"
+$env:OPENROUTER_API_KEY = "<your_openrouter_api_key>"
+$env:CT_BOT_MODEL = "openai/gpt-4o"
+
+mix do app.config + aetheris server --port 4001
+```
+
+### 1.4 Enable `CUSTOM_ELEMENTS_SCHEMA` in Host Module or Component
 ```typescript
 import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 
@@ -144,7 +197,13 @@ export class AppModule {}
 
 ## Step 2: App Shell Template Composition
 
-Place the layout inside your shell template (`app.component.html` or `app-shell.component.html`):
+### Crucial Rule: Do NOT Bind Messages When Using Harness Bridge
+When using `connectAcpHarness`, the connector **directly manages** `chat.messages`, `chat.pending`, and `chat.chatHistory` on the DOM element.
+- ❌ **Do NOT write:** `[messages]="messages"` (Angular change detection will overwrite live responses with the host's static array!).
+- ❌ **Do NOT write:** `[pending]="isPending"`.
+- ❌ **Do NOT write:** `(acp-message-sent)="onChatMessage($event)"` (This would bypass or duplicate the harness request!).
+
+Only bind shell layout state, open flags, width, and navigation:
 
 ```html
 <div class="app-shell">
@@ -172,21 +231,13 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
       <!-- Chat Panel Column -->
       <div class="acp-workspace__chat">
         <acp-chat-panel
+          #chatPanel
           [open]="chatOpen"
           [width]="chatWidth"
           [agentDisplay]="agentName"
-          [pending]="isPending"
-          [messages]="messages"
-          [chatHistory]="chatHistory"
           (acp-open-change)="onChatOpenChange($event.detail)"
           (acp-width-change)="chatWidth = $event.detail"
-          (acp-new-chat)="onNewChat()"
-          (acp-message-sent)="onChatMessage($event.detail)"
-          (acp-suggestion-click)="onSuggestionClick($event.detail)"
           (acp-navigate)="onNavigate($event.detail)"
-          (acp-cancel-request)="onCancelRequest()"
-          (acp-restore-conversation)="onRestoreConversation($event.detail)"
-          (acp-form-requested)="onFormRequested($event.detail)"
         ></acp-chat-panel>
       </div>
 
@@ -205,11 +256,11 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
             [class.acp-workspace-rail]="workspaceMinimized"
           >
             <acp-dynamic-container
+              #dynamicWorkspace
               [open]="workspaceOpen"
               [minimized]="workspaceMinimized"
               [formWidth]="workspaceWidth"
               [formHeight]="workspaceHeight"
-              [formSpec]="activeFormSpec"
               (acp-open-change)="workspaceOpen = $event.detail"
               (acp-form-width-change)="workspaceWidth = $event.detail"
               (acp-form-height-change)="workspaceHeight = $event.detail"
@@ -219,24 +270,15 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
               (acp-submitted)="onFormSubmitted($event.detail)"
               (acp-actions-requested)="onActionsRequested($event.detail)"
             ></acp-dynamic-container>
-
-            <!-- Or Buddy Student Enrollment Workspace:
-            <buddy-enrol-workspace-surface
-              (buddy-parse)="onBuddyParse($event.detail)"
-              (buddy-check)="onBuddyCheck($event.detail)"
-              (buddy-submit)="onBuddySubmit($event.detail)"
-              (buddy-submit-all)="onBuddySubmitAll($event.detail)"
-              (acp-actions-requested)="onActionsRequested($event.detail)"
-            ></buddy-enrol-workspace-surface>
-            -->
           </div>
 
-          <!-- Actions Pane (Activity Log) -->
+          <!-- Assembler Pane (Activity Log) -->
           <div
             class="acp-workspace__actions"
             [class.acp-actions-rail]="actionsMinimized"
           >
             <acp-actions-pane
+              title="Assembler"
               [open]="actionsOpen"
               [width]="actionsWidth"
               [height]="actionsHeight"
@@ -257,177 +299,117 @@ Place the layout inside your shell template (`app.component.html` or `app-shell.
 </div>
 ```
 
-### Sidebar discovery rule
+### Sidebar Discovery Rule
 
-Before editing the shell, inspect its layout and search for existing vertical
-navigation under names such as `sidebar`, `sidenav`, `side-nav`, `nav-rail`,
-`navigation-rail`, `side-menu`, `drawer`, `menu-panel`, or equivalent
-application-specific components and CSS classes. Insert the single AI Agent
-button into the existing side panel's bottom/footer area, preserving its
-markup, icon library, sizing, active state, accessibility, and styling.
+Before editing the shell, inspect its layout and search for existing vertical navigation under names such as `sidebar`, `sidenav`, `side-nav`, `nav-rail`, `navigation-rail`, `side-menu`, `drawer`, `menu-panel`, or equivalent application-specific components and CSS classes. Insert the single AI Agent button into the existing side panel's bottom/footer area, preserving its markup, icon library, sizing, active state, accessibility, and styling.
 
-Do not add the button to a header, top navigation, top toolbar, masthead, or
-any horizontal panel. Do not create a second sidebar beside an existing side
-panel. Only if no vertical side navigation exists may the host create a new
-side panel, and that fallback must contain no new top panel or header.
+Do not add the button to a header, top navigation, top toolbar, masthead, or any horizontal panel. Do not create a second sidebar beside an existing side panel. Only if no vertical side navigation exists may the host create a new side panel, and that fallback must contain no new top panel or header.
 
 ---
 
 ## Step 3: Shell Component Controller
 
+Initialize `connectAcpHarness` inside Angular's `ngAfterViewInit` lifecycle hook so the DOM elements are guaranteed to be mounted:
+
 ```typescript
-import { Component, OnInit } from '@angular/core';
+import { Component, AfterViewInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import {
-  AcpChatMessage,
-  AcpChatHistoryItem,
-  AcpActivityItem,
-  AcpFormSpec
-} from '@acp/chat-panel';
+import { connectAcpHarness, AcpHarnessConnection } from '@acp/chat-panel/harness';
+import { AcpActivityItem } from '@acp/chat-panel';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-shell',
   templateUrl: './app-shell.component.html',
   styleUrls: ['./app-shell.component.css']
 })
-export class AppShellComponent implements OnInit {
-  // Default/initial state: all three panels start closed. The sidebar's
-  // AI toggle button is the only way to open the chat panel.
+export class AppShellComponent implements AfterViewInit, OnDestroy {
+  // Chat panel layout state: starts closed
   chatOpen = false;
   chatWidth = 380;
   agentName = 'Assistant';
-  isPending = false;
 
+  // Workspace and Assembler pane layout state
   workspaceOpen = false;
   workspaceWidth = 540;
+  workspaceHeight: number | null = null;
   workspaceMinimized = false;
+
   actionsOpen = false;
   actionsWidth = 280;
+  actionsHeight: number | null = null;
   actionsMinimized = false;
 
-  activeFormSpec: AcpFormSpec | null = null;
   activityItems: AcpActivityItem[] = [];
-  chatHistory: AcpChatHistoryItem[] = [];
 
-  messages: AcpChatMessage[] = [
-    {
-      id: 'intro',
-      role: 'assistant',
-      text: "Hello! How can I assist you with your operations today?",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      blocks: [
-        {
-          type: 'text',
-          text: "Hello! How can I assist you with your operations today?"
+  private harnessConnection: AcpHarnessConnection | null = null;
+
+  constructor(private router: Router) {}
+
+  ngAfterViewInit() {
+    // Locate the custom elements after the DOM view has initialized
+    const chatEl = document.querySelector('acp-chat-panel') as HTMLElement & {
+      messages?: any[];
+      chatHistory?: any[];
+      pending?: boolean;
+    };
+    const workspaceEl = document.querySelector('acp-dynamic-container') as HTMLElement & {
+      open?: boolean;
+      formSpec?: any;
+      close?: () => void;
+    };
+    const assemblerEl = document.querySelector('acp-actions-pane') as HTMLElement & {
+      open?: boolean;
+      title?: string;
+      items?: any[];
+      menuActions?: any[];
+    };
+
+    if (chatEl) {
+      // Connect to the Agent Harness Bridge
+      this.harnessConnection = connectAcpHarness({
+        chat: chatEl,
+        workspace: workspaceEl,
+        actions: assemblerEl,
+        environment,
+        config: {
+          getBearerToken: () => (environment.AGENT_FILE_RUN_BEARER_TOKEN || '').trim()
         },
-        {
-          type: 'suggestions',
-          suggestions: [
-            {
-              id: 'sug-1',
-              label: 'Enroll student',
-              action: { id: 'act-1', label: 'Enroll student', payload: { type: 'internal.prompt', prompt: 'Enroll student' } }
-            },
-            {
-              id: 'sug-2',
-              label: 'View transactions',
-              action: { id: 'act-2', label: 'View transactions', payload: { type: 'navigate', href: '/fees/transactions' } }
-            }
-          ]
+        getContext: () => ({
+          route: this.router.url
+        }),
+        onNavigate: (href: string) => {
+          this.router.navigateByUrl(href);
+        },
+        onSurface: (surface: any) => {
+          if (surface && surface.type === 'activity-log') {
+            this.activityItems = Array.isArray(surface.items) ? surface.items : [];
+            this.actionsOpen = true;
+            this.actionsMinimized = false;
+          } else if (surface && surface.title) {
+            // The package renders generic information; hosts can add richer domain rendering here.
+            this.workspaceOpen = true;
+            this.workspaceMinimized = false;
+          }
         }
-      ]
+      });
     }
-  ];
-
-  constructor(private http: HttpClient, private router: Router) {}
-
-  ngOnInit() {
-    this.loadChatHistory();
   }
 
-  loadChatHistory() {
-    this.http.get<AcpChatHistoryItem[]>('/api/conversations').subscribe({
-      next: (list) => this.chatHistory = list,
-      error: () => {}
-    });
-  }
-
-  onNewChat() {
-    this.messages = [];
+  ngOnDestroy() {
+    // Clean up event listeners and ongoing runs when the shell is destroyed
+    if (this.harnessConnection) {
+      this.harnessConnection.disconnect();
+      this.harnessConnection = null;
+    }
   }
 
   onChatOpenChange(open: boolean) {
     this.chatOpen = open;
   }
 
-  onChatMessage(text: string) {
-    const userMsg: AcpChatMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    this.messages = [...this.messages, userMsg];
-    this.isPending = true;
-
-    this.http.post<any>('/api/agent/chat', {
-      userText: text,
-      route: this.router.url
-    }).subscribe({
-      next: (reply) => {
-        this.isPending = false;
-        this.messages = [
-          ...this.messages,
-          {
-            id: `reply-${Date.now()}`,
-            role: 'assistant',
-            text: reply.text,
-            blocks: reply.blocks,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ];
-      },
-      error: () => {
-        this.isPending = false;
-        this.messages = [
-          ...this.messages,
-          {
-            id: `err-${Date.now()}`,
-            role: 'error',
-            text: 'Failed to reach agent service.',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ];
-      }
-    });
-  }
-
-  onSuggestionClick(detail: any) {
-    const sug = detail.suggestion;
-    if (sug && sug.action && sug.action.payload && sug.action.payload.type === 'navigate') {
-      this.router.navigateByUrl(sug.action.payload.href);
-    }
-  }
-
   onNavigate(detail: { href: string }) {
     this.router.navigateByUrl(detail.href);
-  }
-
-  onCancelRequest() {
-    this.isPending = false;
-  }
-
-  onRestoreConversation(detail: { conversationId: string }) {
-    this.http.get<any>(`/api/conversations/${detail.conversationId}`).subscribe((data) => {
-      this.messages = data.messages || [];
-    });
-  }
-
-  onFormRequested(detail: { formSpec: AcpFormSpec }) {
-    this.activeFormSpec = detail.formSpec;
-    this.workspaceOpen = true;
-    this.workspaceMinimized = false;
   }
 
   openActionsPane() {
@@ -436,7 +418,7 @@ export class AppShellComponent implements OnInit {
   }
 
   onWorkspaceMaximize() {
-    // Optional host persistence/analytics hook. Actions remains unchanged.
+    // Optional persistence hook
   }
 
   restoreDefaultSplit() {
@@ -445,7 +427,7 @@ export class AppShellComponent implements OnInit {
   }
 
   onFormSubmitted(detail: any) {
-    // Keep Workspace open so the user can review or edit the submitted data.
+    // Keep Workspace open for user review
   }
 
   onActionsRequested(detail: { open: boolean; item: AcpActivityItem }) {
@@ -455,9 +437,7 @@ export class AppShellComponent implements OnInit {
   }
 
   onActionClick(detail: { item: AcpActivityItem; actionId: string }) {
-    if (detail.actionId === 'focus_record') {
-      // Handle record focus
-    }
+    // Host-specific action handling
   }
 }
 ```
@@ -466,57 +446,40 @@ export class AppShellComponent implements OnInit {
 
 ## Step 4: Window Management (Rails & Restore)
 
-The ACP v0.2.2 package incorporates advanced window management:
+The ACP v0.2.10 package retains advanced window management:
 
 1. **Minimize (`−`)**: Collapses the pane into a slim vertical rail (`52px` wide) displaying a vertical label and close button.
-2. **Maximize (`⤢`)**: Expands that pane to its configured maximum without closing the adjacent pane.
+2. **Maximize (`⤢`)**: Expands that pane and its content to the available stage width while preserving an open sibling. Maximizing the sibling restores the currently maximized pane first.
 3. **Restore**: Clicking anywhere on a minimized rail's header restores the pane to its standard width.
 4. **Kebab Menu (`⋮`)**:
    - On Workspace: provides **"Open Actions"** to view activity log without submitting.
    - On Actions: provides **"Copy all saved names"** (automatically copies saved student names to system clipboard).
-5. **Resize**: The right edge resizes width; the bottom edge resizes height; the bottom-right corner grip resizes both. Height is clamped between the pane's minimum (`240px` by default) and the viewport bottom. Leave `formHeight` / `height` unset (`null`) to keep the full column height.
+5. **Resize**: The right-edge divider aligns with the pane boundary; the bottom edge resizes height; the bottom-right corner grip resizes both. Height is clamped between the pane's minimum (`240px` by default) and the viewport bottom. Leave `formHeight` / `height` unset (`null`) to keep the full column height.
 
-### Default/Initial State
-
-On first load — before the user clicks the sidebar's AI toggle — **all three
-surfaces (chat, Workspace, Actions) must be closed**: `chatOpen`,
-`workspaceOpen`, and `actionsOpen` all start `false`. Do not set `chatOpen =
-true` (or persist any of these flags in eagerly-loaded state) — the sidebar
-button is the only trigger that should open the chat panel.
-
-### Independent Close State
-
-Each custom element owns its `open` state. Closing Chat must not close or
-minimize Workspace or Actions. Closing Workspace must not close Actions, and
-Actions remains visible until its own close control is used. Keep all three
-elements mounted so sibling request events can reach them; the package makes a
-closed element zero width.
-
-### Reflow on Open/Close/Minimize
-
-Keep the wrappers mounted and let each element's `open` property control
-visibility. Do not give wrappers fixed `width`, `min-width`, or `flex-basis`.
-The package collapses closed elements to zero and minimized elements to the
-tokenized rail width.
+### Initial / Close State
+- All three surfaces start **closed** (`chatOpen = false`, `workspaceOpen = false`, `actionsOpen = false`).
+- Each custom element owns its `open` state. Closing Chat does not close Workspace or Actions.
 
 ---
 
-## Step 5: Verification Checklist
+## Step 5: Troubleshooting & Verification Checklist
 
+### Common Pitfall: Why are messages generic or not reaching the harness?
+
+| Symptom | Cause | Solution |
+|---|---|---|
+| Chat shows only canned introductory text ("Hello! How can I assist you...") | `[messages]="messages"` is bound in the template HTML. | Remove `[messages]` and `[pending]` from `<acp-chat-panel>`. Let `connectAcpHarness` own message state. |
+| Chat does not respond to user input or calls `/api/agent/chat` | `(acp-message-sent)` is bound to a mock method. | Remove `(acp-message-sent)` from `<acp-chat-panel>`. The bridge automatically captures `acp-message-sent` events. |
+| Console error: `TypeError: connectAcpHarness requires an acp-chat-panel element` | `connectAcpHarness` was called in `ngOnInit()` before DOM was rendered. | Move `connectAcpHarness` call into `ngAfterViewInit()`. |
+| Chat displays `Agent service is not configured.` | Missing `AGENT_FILE_RUN_BEARER_TOKEN` or `AGENT_FILE_RUN_AGENT_PATH`. | Configure non-empty token and agent path in `environment.ts` or `config.getBearerToken`. |
+| Chat displays `Agent reply WebSocket failed.` | The harness server (port 4001) is not running or CORS rejected the connection. | Start the harness server (`mix do app.config + aetheris server --port 4001`) and verify origins. |
+
+### Verification Checklist
+- [ ] In `environment.ts`, `AGENT_FILE_RUN_API_URL` (e.g. `http://localhost:4001`), `AGENT_FILE_RUN_BEARER_TOKEN`, and `AGENT_FILE_RUN_AGENT_PATH` are configured.
+- [ ] The harness server is running on the configured port.
+- [ ] `connectAcpHarness` is initialized inside `ngAfterViewInit()` and disconnected in `ngOnDestroy()`.
+- [ ] In template HTML, `<acp-chat-panel>` has **NO** `[messages]`, `[pending]`, or `(acp-message-sent)` bindings.
+- [ ] Sending a message in the chat panel triggers a prompt in the harness and renders live assistant text blocks.
+- [ ] Suggestion chips appear and click actions route or prompt correctly.
 - [ ] Chat panel renders docked next to sidebar and fills full viewport height (`100%`).
-- [ ] Composer stays anchored to the bottom.
-- [ ] In-flight thinking indicator pill (`Thinking...`) appears when `[pending]="true"`.
-- [ ] In-conversation search filters messages in real time.
-- [ ] History button opens recent conversations dropdown.
-- [ ] Suggestion chips render with `→` icon and fire actions on click.
-- [ ] Dynamic forms and Buddy workspace open in stage overlay without replacing router content.
-- [ ] Minimize (`−`) collapses panes into rails with vertical text.
-- [ ] Actions pane renders status items with kind tints (`success`, `warning`, `error`, `info`).
-- [ ] Kebab menu allows copying all saved names to clipboard.
-- [ ] All colors derive from `--acp-*` design tokens with opaque backgrounds.
-- [ ] On initial app load, the AI Agent, Workspace, and Actions panels are all **closed** (nothing auto-opens).
-- [ ] The Send button is visible and clickable at the default chat width and after resizing to the minimum width.
-- [ ] Closing Chat does not implicitly close Workspace or Actions; each pane's close button controls its own state.
-- [ ] Minimizing Workspace or Actions reclaims the freed width immediately — no residual empty space in the stage.
-- [ ] Opening, closing, and minimizing any pane reflows the layout without a manual resize/refresh.
-- [ ] Workspace and Actions resize in height from the bottom edge and in both axes from the corner grip; content scrolls inside the resized pane.
+- [ ] On initial load, Chat, Workspace, and Assembler all start closed.

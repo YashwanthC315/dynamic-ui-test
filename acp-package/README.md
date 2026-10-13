@@ -1,37 +1,132 @@
-# @acp/chat-panel
+# @acp/chat-panel (v0.2.10)
 
-A small, directly installable chat-panel package for Angular 22 applications. It exposes a native custom element so the package does not require the host application's Angular compiler configuration to build the panel.
+A chat panel, workspace, and activity ("Assembler") pane for your web app, delivered as browser custom elements. It works with Angular and other modern frameworks, with no need to compile the components.
 
-The component is designed to live **inside the application's layout**, beside routed content. It is not an overlay, modal, floating drawer, or fixed-position chat window.
+> **What this is:** the browser UI only. It talks to an Agent Harness server, which you need to have running separately.
 
-## Install
+## How it works
 
-Copy the package into the target app folder and install it
+1. Download the package and the agent guide
+2. Install the package
+3. Hand the agent guide to a coding agent and ask it to integrate the chat panel
+4. Set the env values so the chat panel can reach the harness
+
+---
+
+## Before you start
+
+Have these ready:
+
+| Item | Example |
+|---|---|
+| Your app's folder (the one with `package.json`) | `~/my-app` |
+| Your app's local URL | `http://localhost:4300` |
+| Harness server URL | `http://localhost:4001` |
+| Main agent path (on the harness server) | `ct-bot/agents/main.exs` |
+| Suggestions agent path (optional) | `ct-bot/agents/suggestions.exs` |
+| A way for users to get a harness token at runtime | your existing auth service |
+
+Never paste real tokens into the coding agent chat.
+
+---
+
+## Step 1: Download the files
+
+Get these files and put them in your app's folder so your coding agent can read them:
+
+- `acp-chat-panel-0.2.10.tgz` (the package)
+- `README.md` (this file)
+- `AGENT_GUIDE.md` (integration instructions for the agent)
+- `SPEC_DOC.md` (optional: element and event details)
+
+## Step 2: Install the package
+
+Run this from your app's folder:
 
 ```bash
-npm install ./acp-chat-panel-0.2.2.tgz
+npm install ./acp-chat-panel-0.2.10.tgz
 ```
 
-## Angular 22 integration
+## Step 3: Ask your coding agent to integrate it
 
-## Minimum requirements
-- **Angular:** v22 (host application built with Angular 22). Older or newer major versions are not tested — verify compatibility before use.
-- **Node.js:** LTS Node 20+ (recommended Node 20 or 22). If install/build fails, verify your local Node version first.
-- **npm:** npm 10+ recommended.
-- **TypeScript:** Compatible with the TypeScript version used by Angular 22 projects.
-- **Framework integrations:** The package is framework-agnostic beyond the custom element API; it does **not** require NgRx, Angular Material, or other state/UI frameworks. If your app uses NgRx or other state managers, integrate `messages` with your store as the host owns the message array.
-- **Build setup:** Host must allow importing package CSS into the global styles (or copy `theme.css`/`styles.css` into global styles). Register the custom element once via `import '@acp/chat-panel'` in a file executed on bootstrap.
-- **Browser support:** Depends on browsers supported by your Angular build; if supporting older browsers, ensure custom elements / web component polyfills are included.
+Give your coding agent the files above and this prompt. Fill in the `<placeholders>`:
 
-## Launch button
+```text
+Integrate @acp/chat-panel v0.2.6 into ct-package-test following
+acp-package-0.2.10/AGENT_GUIDE.md.
 
-Appears in the sidebar and clicking it opens the chat panel
+The harness is already running in a separate repository.
 
-## Agent guide
+Connection settings:
+- AGENT_FILE_RUN_API_URL: http://localhost:example
+- AGENT_FILE_RUN_BEARER_TOKEN: <MATCHING_LOCAL_DEV_TOKEN>
+- AGENT_FILE_RUN_AGENT_PATH: ct-bot/agents/main.exs
+- AGENT_SUGGESTIONS_AGENT_PATH: ct-bot/agents/suggestions.exs
 
-Provide the below agent guide to the agent and give the prompt 
-```bash
-Integrate the installed acp-chat-panel to the application using the provided agent guide
+Complete integration and verification as instructed in the guide.
+Implement the integration, run the available build/checks, and report
+changed files, the start command, remaining setup, and verification results.
 ```
 
-See [`AGENT_GUIDE.md`](./AGENT_GUIDE.md) for the integration procedure and acceptance checklist.
+The agent will handle the code changes, including importing the package, adding `CUSTOM_ELEMENTS_SCHEMA` for Angular, and wiring up `connectAcpHarness`.
+
+## Step 4: Set the env values
+ 
+### Harness URL and agent paths
+ 
+Add these to `src/environments/environment.ts` (or your app's equivalent config):
+ 
+```typescript
+export const environment = {
+  production: false,
+  AGENT_FILE_RUN_API_URL: 'https://your-harness-url',
+  AGENT_FILE_RUN_AGENT_PATH: 'ct-bot/agents/main.exs',
+  AGENT_SUGGESTIONS_AGENT_PATH: 'ct-bot/agents/suggestions.exs'
+};
+```
+ 
+- Set `AGENT_FILE_RUN_API_URL` to your harness server, local or live. It must be a full `http://` or `https://` URL (not empty, not relative, not `ws://`).
+- Remove `AGENT_SUGGESTIONS_AGENT_PATH` if you have no suggestions agent.
+- Agent paths point to files on the harness server, not files in your frontend.
+### Bearer token (the part that must match)
+ 
+The harness only accepts tokens it has been configured with. Your app must send one of them.
+ 
+| Side | What to do |
+|---|---|
+| **Harness server** | The operator lists accepted tokens in `AETHERIS_PLAYGROUND_TOKENS`. |
+| **Your app** | Provide the matching token through `getBearerToken`. It returns the raw token (no `Bearer ` prefix). |
+ 
+So the token your app sends must be one of the values in the harness's `AETHERIS_PLAYGROUND_TOKENS`. Your normal app login token won't work unless the harness is set up to accept it.
+ 
+How to supply it:
+ 
+- **Local testing:** enter the token at runtime and keep it in memory.
+- **Don't** put the token in `environment.ts` or any frontend source or build-time env file. Anything there ends up in the browser bundle, even if git-ignored.
+- **Provider keys** (like `OPENROUTER_API_KEY`) stay on the harness server only.
+### If the harness is on a different origin than your app
+ 
+Browsers block cross-origin requests unless the harness allows them. Pick one:
+ 
+- Ask the harness operator to enable CORS (and WebSocket origin handling) for your app's origin.
+- Or route through your app's own origin with a proxy that forwards `/api/playground` (including WebSocket upgrades) to the harness. For Angular local dev, add `proxy.conf.json` with `"ws": true` and start with `ng serve --proxy-config proxy.conf.json`. In that case set `AGENT_FILE_RUN_API_URL` to your app's own URL.
+---
+ 
+## Check that it works
+ 
+- Chat starts closed, and the sidebar button opens it.
+- Sending a message returns a reply that streams into chat.
+- Your existing routes and content still work.
+## Troubleshooting
+ 
+| Problem | Check |
+|---|---|
+| `401` / `403` | The token your app sends matches one in `AETHERIS_PLAYGROUND_TOKENS`. |
+| Request blocked or fails immediately | CORS or proxy setup (see above); confirm the harness URL is reachable. |
+| Message sends but replies don't stream | WebSocket upgrade is allowed through any proxy or reverse proxy. |
+| Agent path errors | The file exists on the harness, relative to `AETHERIS_AGENTS_ROOT`. |
+
+## More detail
+
+- [AGENT_GUIDE.md](./AGENT_GUIDE.md): full shell integration steps
+- [SPEC_DOC.md](./SPEC_DOC.md): element and event contracts
