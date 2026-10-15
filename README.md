@@ -314,6 +314,8 @@ The app hot-reloads on file changes.
 
 ## How to install github package of chat panel
 
+Run these commands in the root location of the project 
+
 - Set-Location .\ct-package-test
 - npm config set "@yashwanthc315:registry" "https://npm.pkg.github.com" --location=project
 - npm install "@acp/chat-panel@npm:@yashwanthc315/chat-panel@0.2.10"
