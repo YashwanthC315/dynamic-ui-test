@@ -310,3 +310,10 @@ The app hot-reloads on file changes.
 - Add a production transport adapter per website/domain.
 - Add host-specific action adapters for navigation/state mutations.
 - Keep `shared/agent-chat-panel` as the canonical reusable chat UI source.
+
+
+## How to install github package of chat panel
+
+- Set-Location .\ct-package-test
+- npm config set "@yashwanthc315:registry" "https://npm.pkg.github.com" --location=project
+- npm install "@acp/chat-panel@npm:@yashwanthc315/chat-panel@0.2.10"
