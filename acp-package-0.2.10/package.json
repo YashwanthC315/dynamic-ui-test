@@ -1,6 +1,14 @@
 {
-  "name": "@acp/chat-panel",
+  "name": "@yashwanthc315/chat-panel",
   "version": "0.2.10",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YashwanthC315/dynamic-ui-test.git",
+    "directory": "acp-package-0.2.10"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "description": "Universal AI Chat Panel with responsive Workspace and Assembler panes and Agent Harness integration.",
   "type": "module",
   "main": "./dist/acp-chat-panel.js",
