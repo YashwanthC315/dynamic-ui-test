@@ -1,12 +1,13 @@
-# Dynamic UI Test (Angular)
+# Dynamic UI Test
 
-This repository contains a chat-driven operations UI built with Angular. The reusable chat panel can be embedded into any Angular website/application as a sidebar.
+This repository contains the CampusTrack Angular demo, a reusable Angular chat component, and a separately published Web Component package.
 
-Current goal: keep chat integration reusable across multiple apps while using CampusTrack as one demo host.
+- `campustrack-ui/` is the existing CampusTrack demo (Angular 18). It currently uses the local `AgentChatPanelComponent` and a mock transport.
+- `shared/agent-chat-panel/` contains the reusable Angular component source.
+- `ct-package-test/` is a separate Angular 22 host for testing the published package. It is not the CampusTrack demo.
+- `acp-package-0.2.10/` contains the source files used to package `@yashwanthc315/chat-panel@0.2.10`.
 
-Angular app location: `campustrack-ui`
-
-Shared reusable chat source: `shared/agent-chat-panel`
+The published Web Component package is a separate integration path from the local Angular component. Installing it does not automatically replace the CampusTrack demo's current chat component.
 
 ## Current Scope
 
@@ -16,16 +17,17 @@ The app currently focuses on:
 
 In CampusTrack, the chat is currently connected to demo workflows. The shared component itself is host-agnostic.
 
-## Component Structure
+## Current CampusTrack Chat
 
-- `AgentChatPanelComponent`: generic/reusable chat UI and message input/output
-- `AppComponent`: orchestration layer that routes chat prompts to host workflows
+- `campustrack-ui/src/app/app.component.ts` imports and hosts `AgentChatPanelComponent`.
+- `campustrack-ui/src/app/components/agent-chat-panel.component.ts` contains the app's local component implementation.
+- `shared/agent-chat-panel/services/chat-transport-adapter.service.ts` defaults to `MockAgentHarnessService` through `HARNESS_TRANSPORT_CLIENT`.
 
-## Shared Chat Component (Root Clone)
+The demo covers Fee Collection and related CampusTrack navigation/workflows. Its mock responses are for demonstration; the published package's Agent Harness integration is documented separately below.
 
-The reusable chat component is now cloned at the repository root so multiple apps can consume the same base implementation.
+## Shared Angular Component Source
 
-Root shared folder:
+The shared source is kept under `shared/agent-chat-panel`:
 
 - `shared/agent-chat-panel/components/agent-chat-panel.component.ts`
 - `shared/agent-chat-panel/components/agent-chat-panel.component.html`
@@ -34,11 +36,11 @@ Root shared folder:
 - `shared/agent-chat-panel/services/mock-agent-harness.service.ts`
 - `shared/agent-chat-panel/styles/agent-chat-panel.css`
 
-Use this shared folder as the canonical source when integrating chat into current/future apps.
+The current CampusTrack app uses its own component files under `campustrack-ui/src/app/components`. The shared folder is the reusable Angular source for apps that intentionally choose the Angular component rather than the published custom-element package.
 
-## Integrate Agent Chat Panel Into Another Angular App
+## Integrate the Shared Angular Component (Legacy Path)
 
-Use this guide when you want to move the reusable chat panel into any Angular website/application.
+This section applies only when copying the local Angular component source. For the published `@yashwanthc315/chat-panel` package, use the GitHub Packages steps at the bottom of this README and the package's `AGENT_GUIDE.md` instead.
 
 ### 1) Copy the reusable chat files
 
@@ -146,111 +148,6 @@ The panel emits action payloads through `(agentEvent)`. Handle them in your host
 
 The panel also accepts contextual inputs via `[appContext]` and `[hostContext]`; keep them updated so the harness receives accurate context with each prompt.
 
-## Example Prompt For A Coding Agent
-
-Use the following prompt when asking a coding agent to integrate this panel into a new Angular app after you provide the shared folder:
-
-```text
-Integrate the reusable Agent Chat Panel into this website without changing the existing application shell.
-
-First inspect the host layout and identify:
-- The global header/banner.
-- The existing sidebar/nav rail.
-- The main routed-content region.
-- Any sidebar open/close state or layout mode state.
-- Any host components using generic selectors such as `header`, `nav`, or `aside`.
-
-Use these shared files unchanged in purpose:
-- shared/agent-chat-panel/components/agent-chat-panel.component.ts
-- shared/agent-chat-panel/components/agent-chat-panel.component.html
-- shared/agent-chat-panel/services/chat-contracts.ts
-- shared/agent-chat-panel/services/chat-transport-adapter.service.ts
-- shared/agent-chat-panel/services/mock-agent-harness.service.ts
-- shared/agent-chat-panel/styles/agent-chat-panel.css
-
-Layout requirements:
-
-1. If the host has a sidebar/nav rail:
-   - Add the Agent trigger as a real navigation item inside that sidebar.
-   - Place it at the bottom of the sidebar navigation.
-   - Do not position it as a floating button, overlay, or absolutely positioned control in empty sidebar space.
-   - The Agent trigger must use the sidebar’s existing visual language.
-
-2. When opened:
-   - Render the chat as an extension of the existing sidebar.
-   - The layout order must be:
-
-     [existing nav rail] [resizable Agent panel] [main routed content]
-
-   - The Agent panel must be part of the page layout, not a viewport-fixed overlay.
-   - It must not create an extra row or push the application content downward.
-   - The main header/banner must remain in its existing location and must not be moved into or duplicated inside the Agent panel.
-   - The Agent panel must contain only Agent UI. Do not render host header, burger controls, user menus, logs, notifications, dashboard links, or navigation menus inside it.
-   - Preserve the panel’s resize behavior.
-   - If the sidebar is collapsed or switched to another navigation mode, close the Agent panel automatically and restore the original layout.
-
-3. If the host has no sidebar:
-   - Use a fixed floating Agent trigger and viewport-edge drawer instead.
-
-Host integration requirements:
-
-- Pass `appContext`, `hostContext`, and `entities` from host state.
-- Keep all host-specific navigation/state handling in a generic host adapter.
-- Handle `agentEvent` without adding domain assumptions to the shared component.
-- Register `HARNESS_TRANSPORT_CLIENT` with `MockAgentHarnessService`.
-- Import the shared Agent styles and add host-specific overrides outside the shared component.
-- Avoid selector collisions with host components. For example, if the host uses `header` as an Angular component selector, do not use a native `<header>` element inside the shared panel; use a non-conflicting wrapper with an accessibility role instead.
-- Keep all existing routes, header behavior, sidebar behavior, and page content unchanged when Agent is closed.
-
-Validation:
-
-- Verify visually that:
-  - There is exactly one host header.
-  - There is exactly one sidebar/nav rail.
-  - The Agent button is inside the sidebar at the bottom.
-  - The Agent panel is directly adjacent to the sidebar.
-  - No host navigation or header controls appear inside the Agent panel.
-  - Main content is beside the Agent panel, not below it.
-  - Resizing works.
-  - Closing/collapsing the host sidebar also closes Agent.
-- Run the build and tests.
-- Fix integration-caused compile or template errors.
-
-Deliverables:
-
-- List of changed files.
-- Layout/integration decisions.
-- Visual verification summary.
-- Build/test results.
-- TODOs for replacing mock transport and adding domain-specific intent handling later.
-- Explicit confirmation of every acceptance criterion.
-```
-
-## Example Prompts
-
-Use quick commands or type prompts in chat, such as:
-
-- `help`
-- `status summary`
-- `simulate error`
-- `show overview`
-- `open settings`
-
-## Prompt Interpretation (Current Logic)
-
-Current mock harness behavior is keyword-based and demo-only.
-
-- It returns typed blocks (status/text/markdown/data/suggestions).
-- It supports basic demo prompts from the examples above.
-- Unknown prompts are still sent as-is and receive a safe fallback response.
-
-## Fee Collection Features
-
-- Student search and selection
-- Pending vs paid fee tabs
-- Amount and payment mode handling
-- Save validation (amount must match selected pending total)
-
 ## Run Locally
 
 Prerequisites:
@@ -262,7 +159,7 @@ Steps:
 1. Change to the app folder:
 
 	 ```bash
-	 cd campustrack-ui
+	 cd ct-package-test
 	 ```
 
 2. Install dependencies:
@@ -279,18 +176,11 @@ Steps:
 
 4. Open in browser:
 
-	 `http://localhost:4200/`
+	 `http://localhost:4300/`
 
 The app hot-reloads on file changes.
 
 ## Helpful Commands
-
-- Run tests:
-
-	```bash
-	cd campustrack-ui
-	npm test
-	```
 
 - Build production bundle:
 
@@ -310,3 +200,54 @@ The app hot-reloads on file changes.
 - Add a production transport adapter per website/domain.
 - Add host-specific action adapters for navigation/state mutations.
 - Keep `shared/agent-chat-panel` as the canonical reusable chat UI source.
+
+## Install the Published GitHub Package
+
+The custom-element package is published as `@yashwanthc315/chat-panel` version `0.2.10` in GitHub Packages. The package's integration import name remains `@acp/chat-panel`; use the npm alias below to preserve those imports.
+
+These steps are for the person installing the package in a host app. Run them from the host application's directory, the one containing its `package.json`. The package is private unless its GitHub package visibility has been changed, so the package owner must grant the installing GitHub account read access.
+
+### 1. Create a read token
+
+Each recipient creates their own **personal access token (classic)** in GitHub:
+
+1. Open [GitHub personal access tokens](https://github.com/settings/tokens).
+2. Choose **Generate new token (classic)**.
+3. Set an expiration and select the `read:packages` scope.
+4. Generate the token. If GitHub prompts for organization SSO authorization, authorize it.
+
+Do not send the token to the package owner or coding agent, commit it, or put it in frontend source. This token is for npm registry authentication, not the Agent Harness bearer token used by the running application.
+
+### 2. Map the npm scope to GitHub Packages
+
+From the host app directory, configure the package scope:
+
+```powershell
+npm config set "@yashwanthc315:registry" "https://npm.pkg.github.com" --location=project
+```
+
+This writes a non-secret registry mapping to the project's `.npmrc`. It is fine to commit that mapping; do not put a token in this project file.
+
+### 3. Log in to GitHub Packages
+
+Run:
+
+```powershell
+npm login --scope=@yashwanthc315 --auth-type=legacy --registry=https://npm.pkg.github.com
+```
+
+At the prompts, enter the recipient's GitHub username, paste their personal access token as the password directly into the terminal, and enter an email if requested. Do not paste the token into chat or a source file. If npm reports `401 Unauthorized` or says no authentication token was provided, repeat this login step and verify that the token has `read:packages`.
+
+### 4. Install the package
+
+To preserve the package's documented `@acp/chat-panel` imports while downloading the GitHub-scoped package, install the npm alias:
+
+```powershell
+npm install "@acp/chat-panel@npm:@yashwanthc315/chat-panel@0.2.10"
+```
+
+If you use the actual `@yashwanthc315/chat-panel` import name instead, install it directly with `npm install @yashwanthc315/chat-panel@0.2.10` and update integration imports to match.
+
+Installation alone does not integrate the elements into the app. Give the coding agent the package's `AGENT_GUIDE.md` and `SPEC_DOC.md` from this repository/package distribution and ask it to adapt the host shell. The separate Angular 22 test host in this repository is `ct-package-test`; the existing CampusTrack demo in `campustrack-ui` still uses the local mock-backed Angular component described above.
+
+The GitHub token only authorizes downloading the package. Configure the Agent Harness URL, agent paths, and runtime bearer-token provider separately as described in the package's `AGENT_GUIDE.md`. Never bundle a production harness secret in a frontend build.
