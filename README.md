@@ -240,7 +240,7 @@ At the prompts, enter the recipient's GitHub username, paste their personal acce
 
 ### 4. Install the package
 
-To preserve the package's documented `@acp/chat-panel` imports while downloading the GitHub-scoped package, install the npm alias:
+To preserve the package's documented `@acp/chat-panel` imports while downloading the GitHub-scoped package, install the npm alias in the app location:
 
 ```powershell
 npm install "@acp/chat-panel@npm:@yashwanthc315/chat-panel@0.2.10"
