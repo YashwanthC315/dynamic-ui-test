@@ -222,6 +222,36 @@ function historyTitle(messages, fallback) {
   return title ? title.slice(0, 64) : fallback;
 }
 
+function loadConversationHistory(storageKey) {
+  try {
+    const raw = globalThis.localStorage && globalThis.localStorage.getItem(storageKey);
+    const entries = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(entries)) return new Map();
+    return new Map(entries
+      .filter((entry) => entry && typeof entry.id === 'string' && Array.isArray(entry.messages))
+      .map((entry) => [entry.id, {
+        id: entry.id,
+        title: typeof entry.title === 'string' ? entry.title : 'New chat',
+        updatedAt: typeof entry.updatedAt === 'string' ? entry.updatedAt : '',
+        messages: entry.messages
+      }]));
+  } catch (error) {
+    return new Map();
+  }
+}
+
+function persistConversationHistory(storageKey, historyById) {
+  try {
+    const storage = globalThis.localStorage;
+    if (!storage) return;
+    const entries = Array.from(historyById.values())
+      .sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)));
+    storage.setItem(storageKey, JSON.stringify(entries));
+  } catch (error) {
+    // Storage can be unavailable or full; keep the in-session history usable.
+  }
+}
+
 function limitPromptHistory(history, maxEntries) {
   const limit = Number(maxEntries);
   if (!(limit > 0) || history.length <= limit) return history;
@@ -250,14 +280,21 @@ export function connectAcpHarness(options) {
     maxHistoryEntries: Number(environment.AGENT_CHAT_HISTORY_MAX) > 0
       ? Number(environment.AGENT_CHAT_HISTORY_MAX)
       : 20,
+    historyStorageKey: 'acp.chat-panel.history.v1',
     timeoutMs: DEFAULT_TIMEOUT_MS
   }, settings.config || {});
   const baseUrl = normalizeBaseUrl(config.baseUrl);
-  const historyById = new Map();
-  let conversationId = settings.conversationId || makeId('conv');
-  let messages = Array.isArray(chat.messages) ? chat.messages.slice() : [];
+  const historyStorageKey = String(config.historyStorageKey || 'acp.chat-panel.history.v1');
+  const historyById = loadConversationHistory(historyStorageKey);
+  let conversationId = String(settings.conversationId || makeId('conv'));
+  const initialMessages = Array.isArray(chat.messages) ? chat.messages.slice() : [];
+  const savedConversation = historyById.get(conversationId);
+  let messages = initialMessages.length
+    ? initialMessages
+    : (savedConversation ? savedConversation.messages.slice() : initialMessages);
   let activeRun = null;
   let buddyElement = null;
+  if (savedConversation && !initialMessages.length) chat.messages = messages;
 
   const setMessages = (next) => {
     messages = next;
@@ -274,6 +311,7 @@ export function connectAcpHarness(options) {
       updatedAt: new Date().toISOString(),
       messages: messages.slice()
     });
+    persistConversationHistory(historyStorageKey, historyById);
     chat.chatHistory = Array.from(historyById.values())
       .sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)))
       .map(({ id, title, updatedAt }) => ({ id, title, updatedAt }));

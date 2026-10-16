@@ -13,6 +13,8 @@ export interface AcpHarnessConfig {
   suggestionsAgentPath?: string;
   /** Maximum prior user/assistant messages included in each prompt (default 20). */
   maxHistoryEntries?: number;
+  /** localStorage key for persisted conversations; scope it per user when needed. */
+  historyStorageKey?: string;
   /** Maximum time to wait for an agent run, in milliseconds. */
   timeoutMs?: number;
 }

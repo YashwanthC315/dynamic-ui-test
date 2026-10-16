@@ -20,6 +20,8 @@ import '@acp/chat-panel/styles.css';
 
 `connectAcpHarness` posts to `POST /api/playground/agent-file-runs` and streams replies from `/api/playground/runs/{run_id}/events/ws`. It owns chat messages, pending state, suggestions, history, cancellation, and supported harness surface dispatch. Pass the chat, dynamic workspace, and Assembler elements:
 
+Conversation history is persisted in browser `localStorage` and reloaded into Recent Chats after refresh. Message content is stored under `acp.chat-panel.history.v1` by default; set `config.historyStorageKey` to a user-scoped key when accounts can change in the same browser, and clear that key on logout if required. Storage failures leave the current session usable but cannot preserve history across refreshes.
+
 Each prompt includes up to the newest 20 prior user/assistant messages, adjusted to begin on a user message when possible. Set `config.maxHistoryEntries` or `environment.AGENT_CHAT_HISTORY_MAX` to change the limit; this only limits prompt context, not the displayed or restorable conversation history.
 
 ```typescript
@@ -50,6 +52,6 @@ Set `AGENT_FILE_RUN_API_URL`, `AGENT_FILE_RUN_AGENT_PATH`, and a runtime bearer 
 
 The host owns the existing vertical sidebar and its single launch button. Keep chat closed initially; clicking the button opens chat directly beside the sidebar. Mount Workspace and Assembler in the shell stage immediately to the right of chat, with routed content remaining mounted in that stage. The panes participate in the stage's flex layout: minimizing returns their width to routed content, and maximizing expands the selected pane to available stage width while preserving an open sibling. Maximizing the other pane restores the currently maximized pane first. Harness form/Buddy surfaces open Workspace; activity-log surfaces open Assembler.
 
-Do not bind static `messages` or `pending` values or handle `acp-message-sent` separately while the harness connector is active. Angular hosts need `CUSTOM_ELEMENTS_SCHEMA`. The host remains responsible for router navigation, authorization, domain saves, and any persistence beyond the connector's in-memory history.
+Do not bind static `messages` or `pending` values or handle `acp-message-sent` separately while the harness connector is active. Angular hosts need `CUSTOM_ELEMENTS_SCHEMA`. The host remains responsible for router navigation, authorization, domain saves, and any server-side persistence or account-specific storage policy.
 
 See [AGENT_GUIDE.md](./AGENT_GUIDE.md) for the full shell integration and [SPEC_DOC.md](./SPEC_DOC.md) for element and event contracts.

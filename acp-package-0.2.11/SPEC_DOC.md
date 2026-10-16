@@ -354,7 +354,7 @@ All package surfaces must remain opaque so routed content cannot show through fo
 
 ## Agent-File-Run Connector
 
-The optional `@acp/chat-panel/harness` entry point provides `connectAcpHarness()` for the agent-file-run protocol used by the CampusTrack frontend. Prompt context defaults to the newest 20 prior user/assistant entries, adjusted to start with a user entry when possible; configure `maxHistoryEntries` or `AGENT_CHAT_HISTORY_MAX` to change this prompt-only limit. The full thread remains available to the chat history UI and restore flow.
+The optional `@acp/chat-panel/harness` entry point provides `connectAcpHarness()` for the agent-file-run protocol used by the CampusTrack frontend. Conversation records, including messages, are persisted in browser `localStorage` under `acp.chat-panel.history.v1` and reloaded on connector initialization. Set `historyStorageKey` to a user-scoped key when accounts can change in the same browser; the host should clear the key on logout if required. Prompt context defaults to the newest 20 prior user/assistant entries, adjusted to start with a user entry when possible; configure `maxHistoryEntries` or `AGENT_CHAT_HISTORY_MAX` to change this prompt-only limit. The full thread remains available to the chat history UI and restore flow.
 
 1. `POST {baseUrl}/api/playground/agent-file-runs` with `{ agent_path, user_prompt }` and a bearer token.
 2. Read text reply frames from `GET {baseUrl}/api/playground/runs/{run_id}/events/ws` using the `aetheris.events.v1` and encoded bearer subprotocols.
