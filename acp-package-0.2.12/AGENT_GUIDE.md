@@ -134,23 +134,37 @@ import '@acp/chat-panel';
 ```
 
 ### 1.2 Configure Client Environment (`src/environments/environment.ts`)
-Ensure your environment file exports the file-run harness variables required by `@acp/chat-panel/harness`:
+Ensure your environment file includes the harness endpoints, agent paths, and owner identity used by your host application:
 
 ```typescript
 export const environment = {
   production: false,
   // Other app config...
 
-  // Agent File-Run Harness endpoints:
+  // General harness endpoints used by the host's existing harness integration.
+  AGENT_HARNESS_WS_URL: 'ws://localhost:8787',
+  AGENT_HARNESS_API_URL: 'http://localhost:8787',
+
+  // Agent file-run connector settings:
   AGENT_FILE_RUN_API_URL: 'http://localhost:4001',
-  AGENT_FILE_RUN_BEARER_TOKEN: 'your-bearer-token',
+  AGENT_FILE_RUN_BEARER_TOKEN: '',
   AGENT_FILE_RUN_AGENT_PATH: 'ct-bot/agents/main.exs',
-  AGENT_FILE_RUN_OWNER_ID: 'authenticated-user-id',
-  AGENT_SUGGESTIONS_AGENT_PATH: 'ct-bot/agents/suggestions.exs'
+  AGENT_FILE_RUN_OWNER_ID: '',
+  AGENT_SUGGESTIONS_AGENT_PATH: '',
+
+  // Optional host-managed agent paths:
+  AGENT_COMPOSE_AGENT_PATH: '',
+  AGENT_TITLE_AGENT_PATH: ''
 };
 ```
 
-> **Security Note:** Do not commit production secrets to Git. Use untracked environment overrides (e.g. `environment.local.ts`) or pass tokens via runtime configuration (`getBearerToken`).
+`AGENT_FILE_RUN_API_URL`, `AGENT_FILE_RUN_AGENT_PATH`, and a matching bearer token (through `AGENT_FILE_RUN_BEARER_TOKEN` or `getBearerToken`) are required for file-run chat requests. The URL must be an absolute `http://` or `https://` URL; the connector derives its WebSocket URL from it. `AGENT_SUGGESTIONS_AGENT_PATH` is optional and enables suggestion-agent runs when set. The two `AGENT_HARNESS_*` URLs are separate from the file-run connector and are not read by `connectAcpHarness`.
+
+Provide a stable authenticated owner id through `config.ownerId` or `config.getOwnerId`; use the current user's id from authenticated app state and update it when the signed-in user changes. `AGENT_FILE_RUN_OWNER_ID` may be used as a host configuration default, but the runtime `getOwnerId` callback should return the authenticated user's current id. The connector uses the owner id to list and restore that user's threads and to associate new runs with them.
+
+`AGENT_COMPOSE_AGENT_PATH` configures the optional Assembler compose/draft hop, and `AGENT_TITLE_AGENT_PATH` configures the optional title run for a new untitled thread. These are host-managed settings; `connectAcpHarness` does not run the compose or title agents automatically. Leave optional paths blank when the host does not implement the corresponding feature. Agent paths are relative to the harness server's configured agents root, not frontend paths.
+
+> **Security Note:** Do not commit production secrets or bundle them in frontend source. Prefer supplying the current bearer token through runtime configuration (`getBearerToken`). Keep `AGENT_FILE_RUN_BEARER_TOKEN` blank in committed examples; only use a local development token in an appropriately protected local setup.
 
 ### 1.3 Start the Agent Harness Server
 
@@ -378,7 +392,7 @@ export class AppShellComponent implements AfterViewInit, OnDestroy {
         environment,
         config: {
           getBearerToken: () => (environment.AGENT_FILE_RUN_BEARER_TOKEN || '').trim(),
-          getOwnerId: () => this.authenticatedUserId
+          getOwnerId: () => this.authenticatedUserId || (environment.AGENT_FILE_RUN_OWNER_ID || '').trim()
         },
         getContext: () => ({
           route: this.router.url
@@ -476,12 +490,15 @@ The ACP v0.2.12 package retains advanced window management:
 | Chat shows only canned introductory text ("Hello! How can I assist you...") | `[messages]="messages"` is bound in the template HTML. | Remove `[messages]` and `[pending]` from `<acp-chat-panel>`. Let `connectAcpHarness` own message state. |
 | Chat does not respond to user input or calls `/api/agent/chat` | `(acp-message-sent)` is bound to a mock method. | Remove `(acp-message-sent)` from `<acp-chat-panel>`. The bridge automatically captures `acp-message-sent` events. |
 | Console error: `TypeError: connectAcpHarness requires an acp-chat-panel element` | `connectAcpHarness` was called in `ngOnInit()` before DOM was rendered. | Move `connectAcpHarness` call into `ngAfterViewInit()`. |
-| Chat displays `Agent service is not configured.` | Missing `AGENT_FILE_RUN_BEARER_TOKEN` or `AGENT_FILE_RUN_AGENT_PATH`. | Configure non-empty token and agent path in `environment.ts` or `config.getBearerToken`. |
+| Chat displays `Agent service is not configured.` | Missing file-run bearer token or `AGENT_FILE_RUN_AGENT_PATH`. | Configure a matching token through `getBearerToken` (or a local-only `AGENT_FILE_RUN_BEARER_TOKEN`) and set the main agent path. |
 | Recent Chats is empty after refresh | Missing owner id, or harness thread/run history routes are unavailable. | Provide the authenticated owner id through `ownerId`/`getOwnerId`, await `connection.ready`, and inspect the harness thread and events API responses. |
 | Chat displays `Agent reply WebSocket failed.` | The harness server (port 4001) is not running or CORS rejected the connection. | Start the harness server (`mix do app.config + aetheris server --port 4001`) and verify origins. |
+| Suggestions, compose, or title behavior is unavailable. | Its optional agent path is blank or the host does not implement that agent hop. | Set `AGENT_SUGGESTIONS_AGENT_PATH`, `AGENT_COMPOSE_AGENT_PATH`, or `AGENT_TITLE_AGENT_PATH` as applicable; compose and title runs must be orchestrated by the host. |
 
 ### Verification Checklist
-- [ ] In `environment.ts`, `AGENT_FILE_RUN_API_URL` (e.g. `http://localhost:4001`), `AGENT_FILE_RUN_BEARER_TOKEN`, `AGENT_FILE_RUN_AGENT_PATH`, and a stable authenticated owner id are configured.
+- [ ] In `environment.ts`, `AGENT_HARNESS_WS_URL`, `AGENT_HARNESS_API_URL`, `AGENT_FILE_RUN_API_URL`, `AGENT_FILE_RUN_AGENT_PATH`, and either `AGENT_FILE_RUN_BEARER_TOKEN` or runtime `getBearerToken` are configured as appropriate.
+- [ ] A stable authenticated owner id is provided through `config.ownerId`/`config.getOwnerId` (or the host's `AGENT_FILE_RUN_OWNER_ID` default).
+- [ ] Optional paths `AGENT_SUGGESTIONS_AGENT_PATH`, `AGENT_COMPOSE_AGENT_PATH`, and `AGENT_TITLE_AGENT_PATH` are set only for features the host implements.
 - [ ] The harness server is running on the configured port.
 - [ ] `connectAcpHarness` is initialized inside `ngAfterViewInit()` and disconnected in `ngOnDestroy()`.
 - [ ] In template HTML, `<acp-chat-panel>` has **NO** `[messages]`, `[pending]`, or `(acp-message-sent)` bindings.
