@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ACP workspace regression</title>
+  <link rel="stylesheet" href="../styles/acp-tokens.css">
+  <link rel="stylesheet" href="../styles/acp-chat-panel.css">
+  <style>
+    .acp-workspace { height: 640px; }
+    .host-conflicts.acp-workspace { flex-direction: row-reverse; gap: 30px; }
+    .host-conflicts .acp-workspace__chat { order: 9; margin-left: auto; }
+    .host-conflicts .acp-workspace__stage { order: 0; }
+    .host-conflicts .acp-workspace__surface-layer { justify-content: flex-end; flex-direction: row-reverse; gap: 24px; }
+    .host-conflicts .acp-workspace__surface { order: 9; margin-left: auto; position: absolute; right: 0; }
+    .host-conflicts .acp-workspace__actions { order: 0; }
+    .host-conflicts acp-dynamic-container { position: fixed; right: 0; }
+    *, *::before, *::after { transition: none !important; }
+  </style>
+  <script src="../dist/acp-chat-panel.js"></script>
+</head>
+<body>
+  <div class="acp-workspace">
+    <div class="acp-workspace__chat"><acp-chat-panel min-width="120" width="160"></acp-chat-panel></div>
+    <section class="acp-workspace__stage">
+      <main class="acp-workspace__content"><p>Routed content</p></main>
+      <div class="acp-workspace__surface-layer">
+        <div class="acp-workspace__surface"><acp-dynamic-container min-form-width="120" form-width="200"></acp-dynamic-container></div>
+        <div class="acp-workspace__actions"><acp-actions-pane min-width="100" width="120"></acp-actions-pane></div>
+      </div>
+    </section>
+  </div>
+  <pre id="results"></pre>
+  <script>
+    const results = [];
+    function check(condition, label) {
+      if (!condition) throw new Error(label);
+      results.push(label);
+    }
+    function adjacent(left, right, label) {
+      check(Math.abs(left.getBoundingClientRect().right - right.getBoundingClientRect().left) < 2, label);
+    }
+    function fixedHeader(workspace, label) {
+      check(workspace.querySelector('.acp-container-header__title').textContent === 'Workspace', label);
+    }
+    try {
+      const shell = document.querySelector('.acp-workspace');
+      const chat = document.querySelector('acp-chat-panel');
+      const workspace = document.querySelector('acp-dynamic-container');
+      const actions = document.querySelector('acp-actions-pane');
+      const stage = document.querySelector('.acp-workspace__stage');
+      const content = document.querySelector('.acp-workspace__content');
+      check(!chat.open && !workspace.open && !actions.open, 'Panes start closed');
+      check(workspace.title === 'Workspace', 'Default title is Workspace');
+      chat.open = true;
+      const contentWidth = content.getBoundingClientRect().width;
+      check(!workspace.open && !actions.open, 'Chat opens independently');
+      chat.dispatchEvent(new CustomEvent('acp-form-requested', {
+        detail: { formSpec: { id: 'enrol', title: 'Enroll student', fields: [{ id: 'name', label: 'Name', type: 'text' }] } },
+        bubbles: true
+      }));
+      check(workspace.open, 'Form event opens Workspace');
+      fixedHeader(workspace, 'Form title does not rename Workspace');
+      check(workspace.querySelector('.acp-form-title').textContent === 'Enroll student', 'Form title remains inside content');
+      adjacent(chat, workspace, 'Workspace is adjacent to Chat');
+      check(content.getBoundingClientRect().width === contentWidth, 'Routed content width is unchanged');
+      workspace.title = 'Prompt-derived host title';
+      fixedHeader(workspace, 'Host title binding cannot rename Workspace');
+      for (const type of ['student-enrol-form', 'org-add-form', 'buddy-enrol-workspace', 'information']) {
+        workspace.surface = { type, title: 'Dynamic ' + type, data: { status: 'Ready' } };
+        fixedHeader(workspace, type + ' keeps Workspace header');
+      }
+      workspace.collapse();
+      check(workspace.querySelector('.acp-rail-label').textContent === 'Workspace', 'Rail label is Workspace');
+      workspace.restore();
+      fixedHeader(workspace, 'Restore keeps Workspace header');
+      actions.items = [{ id: 'ready', title: 'Ready', status: 'success' }];
+      actions.open = true;
+      adjacent(workspace.parentElement, actions.parentElement, 'Assembler follows Workspace');
+      shell.classList.add('host-conflicts');
+      adjacent(chat, workspace, 'Host drawer and alignment styles cannot move Workspace right');
+      adjacent(workspace.parentElement, actions.parentElement, 'Host order styles cannot swap panes');
+      check(content.getBoundingClientRect().width === contentWidth, 'Host-conflict overlay preserves routed content width');
+      workspace.maximize();
+      adjacent(chat, workspace, 'Maximized Workspace remains beside Chat');
+      fixedHeader(workspace, 'Maximize keeps Workspace header');
+      workspace.restore();
+      workspace.close();
+      check(workspace.getBoundingClientRect().width === 0, 'Closed Workspace occupies zero width');
+      check(actions.open, 'Closing Workspace leaves Assembler open');
+      workspace.open = true;
+      adjacent(chat, workspace, 'Reopened Workspace remains beside Chat');
+      fixedHeader(workspace, 'Reopen keeps Workspace header');
+      chat.open = false;
+      check(Math.abs(workspace.getBoundingClientRect().left - stage.getBoundingClientRect().left) < 2, 'Workspace stays at stage start when Chat closes');
+      window.regressionResults = { passed: true, checks: results };
+    } catch (error) {
+      window.regressionResults = { passed: false, checks: results, error: error.message };
+    }
+    document.getElementById('results').textContent = JSON.stringify(window.regressionResults, null, 2);
+  </script>
+</body>
+</html>
