@@ -21,8 +21,8 @@ The package is a framework-agnostic set of browser Custom Elements. It provides 
 ## 2. Package Identity
 
 - Package name: `@acp/chat-panel`
-- Archive currently stored here: `acp-chat-panel-0.2.10.tgz`
-- Manifest/runtime version inside the archive: `0.2.10`
+- Archive currently stored here: `acp-chat-panel-0.2.12.tgz`
+- Manifest/runtime version inside the archive: `0.2.12`
 - Entry module: `dist/acp-chat-panel.js`
 - Type declarations: `dist/acp-chat-panel.d.ts`
 - Main stylesheet: `styles/acp-chat-panel.css`
@@ -354,7 +354,7 @@ All package surfaces must remain opaque so routed content cannot show through fo
 
 ## Agent-File-Run Connector
 
-The optional `@acp/chat-panel/harness` entry point provides `connectAcpHarness()` for the agent-file-run protocol used by the CampusTrack frontend:
+The optional `@acp/chat-panel/harness` entry point provides `connectAcpHarness()` for the agent-file-run protocol used by the CampusTrack frontend. Set `ownerId` or `getOwnerId` to the authenticated user's stable id. Recent threads are loaded from `GET /api/playground/owners/{owner_id}/threads`; new threads are created through `POST /api/playground/threads`; each run carries `owner_id` and `thread_id`; restore reads run summaries and their stored events from the harness. Browser storage is not used for persisted conversation history. Prompt context defaults to the newest 20 prior user/assistant entries, adjusted to start with a user entry when possible; configure `maxHistoryEntries` or `AGENT_CHAT_HISTORY_MAX` to change this prompt-only limit.
 
 1. `POST {baseUrl}/api/playground/agent-file-runs` with `{ agent_path, user_prompt }` and a bearer token.
 2. Read text reply frames from `GET {baseUrl}/api/playground/runs/{run_id}/events/ws` using the `aetheris.events.v1` and encoded bearer subprotocols.
@@ -369,7 +369,7 @@ The connector accepts the host `environment` object and reads `AGENT_FILE_RUN_AP
 
 ### Angular installation
 
-1. Install the local archive: `npm install ./acp-chat-panel-0.2.10.tgz`.
+1. Install the local archive: `npm install ./acp-chat-panel-0.2.12.tgz`.
 2. Import `@acp/chat-panel` once from the application bootstrap entry point.
 3. Add `CUSTOM_ELEMENTS_SCHEMA` to the Angular module/component that contains the custom elements.
 4. Load `tokens.css` and `styles.css` globally.
