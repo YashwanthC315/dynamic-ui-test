@@ -21,9 +21,11 @@ Have these ready:
 |---|---|
 | Your app's folder (the one with `package.json`) | `~/my-app` |
 | Your app's local URL | `http://localhost:4300` |
-| Harness server URL | `http://localhost:4001` |
+| Agent file-run API URL | `http://localhost:4001` |
 | Main agent path (on the harness server) | `ct-bot/agents/main.exs` |
 | Suggestions agent path (optional) | `ct-bot/agents/suggestions.exs` |
+| Compose agent path (optional, host-managed) | `ct-bot/agents/compose.exs` |
+| Title agent path (optional, host-managed) | `ct-bot/agents/title.exs` |
 | A way for users to get a harness token at runtime | your existing auth service |
 
 Never paste real tokens into the coding agent chat.
@@ -52,16 +54,20 @@ npm install ./acp-chat-panel-0.2.11.tgz
 Give your coding agent the files above and this prompt. Fill in the `<placeholders>`:
 
 ```text
-Integrate @acp/chat-panel v0.2.6 into ct-package-test following
+Integrate @acp/chat-panel v0.2.11 into ct-package-test following
 acp-package-0.2.11/AGENT_GUIDE.md.
 
 The harness is already running in a separate repository.
 
 Connection settings:
-- AGENT_FILE_RUN_API_URL: http://localhost:example
-- AGENT_FILE_RUN_BEARER_TOKEN: <MATCHING_LOCAL_DEV_TOKEN>
+- AGENT_HARNESS_WS_URL: ws://localhost:8787
+- AGENT_HARNESS_API_URL: http://localhost:8787
+- AGENT_FILE_RUN_API_URL: http://localhost:4001
+- AGENT_FILE_RUN_BEARER_TOKEN: supplied securely at runtime; do not put a real token in this prompt
 - AGENT_FILE_RUN_AGENT_PATH: ct-bot/agents/main.exs
 - AGENT_SUGGESTIONS_AGENT_PATH: ct-bot/agents/suggestions.exs
+- AGENT_COMPOSE_AGENT_PATH: <host-managed compose agent path, or leave unset>
+- AGENT_TITLE_AGENT_PATH: <host-managed title agent path, or leave unset>
 
 Complete integration and verification as instructed in the guide.
 Implement the integration, run the available build/checks, and report
@@ -74,19 +80,27 @@ The agent will handle the code changes, including importing the package, adding 
  
 ### Harness URL and agent paths
  
-Add these to `src/environments/environment.ts` (or your app's equivalent config):
+Add these to `src/environments/environment.ts` (or your app's equivalent config), adjusting URLs for your deployment:
  
 ```typescript
 export const environment = {
   production: false,
-  AGENT_FILE_RUN_API_URL: 'https://your-harness-url',
-  AGENT_FILE_RUN_AGENT_PATH: 'ct-bot/agents/main.exs',
-  AGENT_SUGGESTIONS_AGENT_PATH: 'ct-bot/agents/suggestions.exs'
+  AGENT_HARNESS_WS_URL: 'ws://localhost:8787',
+  AGENT_HARNESS_API_URL: 'http://localhost:8787',
+  AGENT_FILE_RUN_API_URL: 'http://localhost:4001',
+  AGENT_FILE_RUN_BEARER_TOKEN: '',
+  AGENT_FILE_RUN_AGENT_PATH: '',
+  AGENT_SUGGESTIONS_AGENT_PATH: '',
+  AGENT_COMPOSE_AGENT_PATH: '',
+  AGENT_TITLE_AGENT_PATH: ''
 };
 ```
  
-- Set `AGENT_FILE_RUN_API_URL` to your harness server, local or live. It must be a full `http://` or `https://` URL (not empty, not relative, not `ws://`).
-- Remove `AGENT_SUGGESTIONS_AGENT_PATH` if you have no suggestions agent.
+- `AGENT_HARNESS_WS_URL` and `AGENT_HARNESS_API_URL` are the legacy harness WebSocket and HTTP endpoints. They are separate from the agent-file-run connector and are not read by `connectAcpHarness`.
+- Set `AGENT_FILE_RUN_API_URL` to the agent-file-run service URL, local or live. It must be an absolute `http://` or `https://` URL, not empty, relative, or `ws://`. The connector derives the streaming WebSocket URL from it.
+- Set `AGENT_FILE_RUN_AGENT_PATH` to the main agent file on the harness server. The connector requires it to run chat requests.
+- `AGENT_SUGGESTIONS_AGENT_PATH` is optional; leave it blank if there is no suggestions agent.
+- `AGENT_COMPOSE_AGENT_PATH` identifies the optional compose agent for the Assembler draft hop. `AGENT_TITLE_AGENT_PATH` identifies the optional title agent used to title a new untitled thread. These are host-managed settings: `connectAcpHarness` does not run the compose or title agents automatically. Leave either blank when the host does not implement that feature.
 - Agent paths point to files on the harness server, not files in your frontend.
 ### Bearer token (the part that must match)
  
@@ -101,9 +115,11 @@ So the token your app sends must be one of the values in the harness's `AETHERIS
  
 How to supply it:
  
-- **Local testing:** enter the token at runtime and keep it in memory.
-- **Don't** put the token in `environment.ts` or any frontend source or build-time env file. Anything there ends up in the browser bundle, even if git-ignored.
+- **Local testing:** enter the token at runtime or in environment.ts and keep it in memory.
+
 - **Provider keys** (like `OPENROUTER_API_KEY`) stay on the harness server only.
+
+`AGENT_FILE_RUN_BEARER_TOKEN` is included in the configuration shape for completeness and may be used as a local-only fallback, but a production token should be supplied by `getBearerToken` at runtime rather than committed or bundled.
 ### If the harness is on a different origin than your app
  
 Browsers block cross-origin requests unless the harness allows them. Pick one:
