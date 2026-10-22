@@ -1,4 +1,4 @@
-# @acp/chat-panel (v0.2.12)
+# @acp/chat-panel (v0.2.15)
 
 A chat panel, workspace, and activity ("Assembler") pane for your web app, delivered as browser custom elements. It works with Angular and other modern frameworks, with no need to compile the components.
 
@@ -36,7 +36,7 @@ Never paste real tokens into the coding agent chat.
 
 Get these files and put them in your app's folder so your coding agent can read them:
 
-- `acp-chat-panel-0.2.12.tgz` (the package)
+- `acp-chat-panel-0.2.15.tgz` (the package)
 - `README.md` (this file)
 - `AGENT_GUIDE.md` (integration instructions for the agent)
 - `SPEC_DOC.md` (optional: element and event details)
@@ -46,7 +46,7 @@ Get these files and put them in your app's folder so your coding agent can read 
 Run this from your app's folder:
 
 ```bash
-npm install ./acp-chat-panel-0.2.12.tgz
+npm install ./acp-chat-panel-0.2.15.tgz
 ```
 
 ## Step 3: Ask your coding agent to integrate it
@@ -54,8 +54,8 @@ npm install ./acp-chat-panel-0.2.12.tgz
 Give your coding agent the files above and this prompt. Fill in the `<placeholders>`:
 
 ```text
-Integrate @acp/chat-panel v0.2.12 into ct-package-test following
-acp-package-0.2.12/AGENT_GUIDE.md.
+Integrate @acp/chat-panel v0.2.15 into ct-package-test following
+acp-package-0.2.15/AGENT_GUIDE.md.
 
 The harness is already running in a separate repository.
 
