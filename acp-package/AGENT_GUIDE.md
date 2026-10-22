@@ -1,8 +1,8 @@
-# ACP Chat Panel - Universal Application Integration Agent Guide (v0.2.12)
+# ACP Chat Panel - Universal Application Integration Agent Guide (v0.2.15)
 
 ## Goal
 
-Integrate the `@acp/chat-panel` (v0.2.12) package into an application shell so that:
+Integrate the `@acp/chat-panel` (v0.2.15) package into an application shell so that:
 1. The application's existing side navigation has a single AI chat toggle button; create a side panel only when none exists.
 2. The chat panel opens **docked directly next to the sidebar** as a full-height workspace column.
 3. The panel connects to the **Agent Harness** via `@acp/chat-panel/harness`, providing real-time streaming replies, suggestion chips, conversation history, cancellation, and in-conversation search.
@@ -16,7 +16,7 @@ This guide supports **all Angular versions** (both Standalone Angular 14–19+ a
 
 ---
 
-## v0.2.12 behavior rules
+## v0.2.15 behavior rules
 
 1. **Chat starts closed**: Do not put `open` on `<acp-chat-panel>` in initial markup and do not open it from an initialization hook.
 2. **Single toggle button**: The host application owns exactly one AI Agent/chat toggle button. First locate and reuse the application's existing side navigation, sidebar, navigation rail, side rail, side menu, drawer, or left/right navigation panel, even if it uses a different name. Add the button at the bottom of that existing side panel. Create a new side panel only when the host has no side navigation. Never place the button in or create a top bar, header, toolbar, or other horizontal panel.
@@ -29,6 +29,8 @@ This guide supports **all Angular versions** (both Standalone Angular 14–19+ a
 9. **Zero width when closed**: Closed elements occupy zero width. Do not reserve fixed-width shell columns around closed elements.
 10. **Harness connection ownership**: When using `connectAcpHarness`, the connector owns message history, pending states, streaming replies, suggestion chips, and surface dispatching. The host **must not** bind `[messages]`, `[pending]`, or `(acp-message-sent)` in the template, as doing so overrides live responses with static data.
 11. **Harness-backed conversation history**: Provide the authenticated user's stable owner id through `config.ownerId` or `config.getOwnerId`. The connector lists and restores threads through the Agent File Run harness and sends `owner_id`/`thread_id` with each run. Do not use browser storage as the conversation source of truth.
+12. **Stable Workspace identity**: The Workspace header reads `Workspace`; never derive it from the prompt, form spec, or response surface title. Those titles may label content inside Workspace but do not rename its pane.
+13. **Stable dock order**: Keep `.acp-workspace__chat` before `.acp-workspace__stage` in the shell row. Package styles enforce this order, and the Workspace/Assembler surface layer starts at the stage's left edge so Workspace opens directly beside Chat.
 
 ---
 
@@ -451,7 +453,7 @@ export class AppShellComponent implements AfterViewInit, OnDestroy {
 
 ## Step 4: Window Management (Rails & Restore)
 
-The ACP v0.2.12 package retains advanced window management:
+The ACP v0.2.15 package retains advanced window management:
 
 1. **Minimize (`−`)**: Collapses the pane into a slim vertical rail (`52px` wide) displaying a vertical label and close button.
 2. **Maximize (`⤢`)**: Expands that pane and its content to the available stage width while preserving an open sibling. Maximizing the sibling restores the currently maximized pane first.
