@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 
 interface SidebarItem {
   code: string;
@@ -12,6 +12,9 @@ interface SidebarItem {
   styleUrl: './sidebar.component.css'
 })
 export class SidebarComponent {
+  @Input() chatOpen = false;
+  @Output() readonly chatToggle = new EventEmitter<void>();
+
   protected readonly items: SidebarItem[] = [
     { code: 'DB', label: 'Dashboard' },
     { code: 'AD', label: 'Admissions' },

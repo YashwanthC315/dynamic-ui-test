@@ -9,6 +9,10 @@
   flex-shrink: 0;
 }
 
+.sidebar-spacer {
+  flex: 1;
+}
+
 .sidebar-icon {
   width: 30px;
   height: 30px;
@@ -33,4 +37,12 @@
 .sidebar-icon.active {
   background: #ffffff;
   color: #16305e;
+}
+
+.sidebar-ai {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
 }

@@ -1,7 +1,9 @@
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .topbar {
@@ -65,13 +67,36 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.app-body > .acp-workspace {
+  height: 100%;
+}
+
+.acp-workspace__surface--buddy acp-dynamic-container {
+  display: none !important;
+}
+
+.acp-workspace__surface--buddy buddy-enrol-workspace-surface {
+  display: block;
+  flex: 0 0 var(--acp-buddy-workspace-width, 540px);
+  width: var(--acp-buddy-workspace-width, 540px);
+  height: 100%;
+  overflow: auto;
+  background: var(--acp-surface-bg);
+  box-shadow: var(--acp-shadow-md);
+  border-right: 1px solid var(--acp-border-color);
 }
 
 .content {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
   padding: 28px 32px;
   background: #e9ebef;
-  overflow-y: auto;
+  overflow: auto;
 }
 
 .footer {

@@ -14,10 +14,58 @@
   </header>
 
   <div class="app-body">
-    <app-sidebar />
-    <main class="content">
-      <app-dashboard />
-    </main>
+    <app-sidebar [chatOpen]="chatOpen()" (chatToggle)="toggleChat()" />
+    <div class="acp-workspace">
+      <div class="acp-workspace__chat">
+        <acp-chat-panel
+          [open]="chatOpen()"
+          [width]="chatWidth()"
+          agentDisplay="CampusTrack Assistant"
+          (acp-open-change)="setChatOpen($event)"
+          (acp-width-change)="setChatWidth($event)"
+        ></acp-chat-panel>
+      </div>
+
+      <section class="acp-workspace__stage">
+        <main class="content acp-workspace__content">
+          <app-dashboard />
+        </main>
+
+        <div class="acp-workspace__surface-layer">
+          <div
+            class="acp-workspace__surface"
+            [class.acp-workspace__surface--buddy]="buddyWorkspaceOpen()"
+            (acp-actions-requested)="addActivityItem($event)"
+            (buddy-cancel)="closeWorkspace()"
+          >
+            <acp-dynamic-container
+              title="Workspace"
+              [open]="workspaceOpen()"
+              [formWidth]="workspaceWidth()"
+              [formHeight]="workspaceHeight()"
+              (acp-open-change)="setWorkspaceOpen($event)"
+              (acp-form-width-change)="setWorkspaceWidth($event)"
+              (acp-form-height-change)="setWorkspaceHeight($event)"
+              (acp-open-actions)="openActions()"
+            ></acp-dynamic-container>
+            <buddy-enrol-workspace-surface></buddy-enrol-workspace-surface>
+          </div>
+
+          <div class="acp-workspace__actions">
+            <acp-actions-pane
+              title="Assembler"
+              [open]="actionsOpen()"
+              [width]="actionsWidth()"
+              [height]="actionsHeight()"
+              [items]="activityItems()"
+              (acp-open-change)="setActionsOpen($event)"
+              (acp-actions-width-change)="setActionsWidth($event)"
+              (acp-actions-height-change)="setActionsHeight($event)"
+            ></acp-actions-pane>
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
 
   <footer class="footer">

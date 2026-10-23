@@ -9,4 +9,16 @@
       {{ item.code }}
     </div>
   }
+  <div class="sidebar-spacer"></div>
+  <button
+    type="button"
+    class="sidebar-icon sidebar-ai"
+    [class.active]="chatOpen"
+    title="AI Agent"
+    aria-label="Toggle AI Agent"
+    [attr.aria-pressed]="chatOpen"
+    (click)="chatToggle.emit()"
+  >
+    AI
+  </button>
 </aside>

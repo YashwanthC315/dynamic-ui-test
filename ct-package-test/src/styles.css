@@ -1,5 +1,61 @@
+@import '@acp/chat-panel/tokens.css';
+@import '@acp/chat-panel/styles.css';
+
 * {
   box-sizing: border-box;
+}
+
+:root {
+  --app-surface: #ffffff;
+  --app-panel-bg: #f5f7fb;
+  --app-header-bg: #16305e;
+  --app-stage-bg: #e9ebef;
+  --app-primary-light: #e4edfc;
+  --app-text-primary: #173b70;
+  --app-text-secondary: #52647d;
+  --app-text-muted: #7888a0;
+  --app-primary: #173b70;
+  --app-primary-hover: #122d56;
+  --app-border: #d8dfeb;
+  --app-success: #2e7d32;
+  --app-warning: #b8860b;
+  --app-danger: #c62828;
+  --app-info: #4670b8;
+  --app-header-height: 52px;
+
+  --acp-surface-bg: var(--app-surface);
+  --acp-panel-bg: var(--app-panel-bg);
+  --acp-header-bg: var(--app-header-bg);
+  --acp-stage-bg: var(--app-stage-bg);
+  --acp-bubble-user-bg: var(--app-primary-light);
+  --acp-bubble-agent-bg: var(--app-surface);
+  --acp-input-bg: var(--app-surface);
+  --acp-rail-bg: var(--app-panel-bg);
+  --acp-rail-hover-bg: #eef1f5;
+  --acp-text-primary: var(--app-text-primary);
+  --acp-text-secondary: var(--app-text-secondary);
+  --acp-text-muted: var(--app-text-muted);
+  --acp-text-on-primary: #ffffff;
+  --acp-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --acp-border-color: var(--app-border);
+  --acp-border-radius-sm: 4px;
+  --acp-border-radius-md: 6px;
+  --acp-border-radius-lg: 8px;
+  --acp-border-radius-pill: 9999px;
+  --acp-primary-accent: var(--app-primary);
+  --acp-primary-hover: var(--app-primary-hover);
+  --acp-primary-light: var(--app-primary-light);
+  --acp-focus-ring: 0 0 0 2px rgba(23, 59, 112, 0.25);
+  --acp-status-success: var(--app-success);
+  --acp-status-success-bg: #f1f8f1;
+  --acp-status-warning: var(--app-warning);
+  --acp-status-warning-bg: #fdf8ee;
+  --acp-status-error: var(--app-danger);
+  --acp-status-error-bg: #fdf1f1;
+  --acp-status-info: var(--app-info);
+  --acp-status-info-bg: #f0f4fa;
+  --acp-app-header-height: var(--app-header-height);
+  --acp-rail-width: 52px;
 }
 
 html, body {
@@ -23,4 +79,12 @@ a:hover {
 
 button {
   font-family: inherit;
+}
+
+.acp-workspace__form,
+.acp-workspace__form .acp-container,
+acp-dynamic-container {
+  background-color: var(--acp-stage-bg) !important;
+  color: var(--acp-text-primary) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
