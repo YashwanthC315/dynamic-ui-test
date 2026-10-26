@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Enrollment Submission Regression Tests</title>
+<link rel="stylesheet" href="../styles/acp-tokens.css">
+<link rel="stylesheet" href="../styles/acp-chat-panel.css">
+<pre id="results">Running...</pre>
+<script src="../dist/acp-chat-panel.js"></script>
+<script type="module">
+  const results = [];
+  document.documentElement.style.setProperty('--acp-control-disabled-bg', 'rgb(1, 2, 3)');
+  const workspace = document.createElement('buddy-enrol-workspace-surface');
+  const assembler = document.createElement('acp-actions-pane');
+  document.body.append(workspace, assembler);
+  const fields = [
+    { id: 'name', required: true, maxLength: 20 },
+    { id: 'dob', required: true, type: 'date' },
+    { id: 'gender', required: true },
+    { id: 'courseId', required: true, type: 'select', options: [{ value: '42', label: 'Science' }] },
+  ];
+  const record = { id: 'student-1', valid: true, values: { name: 'Alex', dob: '2005-01-01', gender: 'Other', courseId: '42' } };
+  const surface = (records = [record]) => ({ formId: 'student-enroll', fields, records, buddy: { text: 'Alex, Science' } });
+  const button = (action) => workspace.querySelector(`[data-action="${action}"]`);
+  const assert = (condition, label) => {
+    if (!condition) throw new Error(label);
+    results.push('PASS: ' + label);
+  };
+  const edit = (selector, value, event = 'input') => {
+    const input = workspace.querySelector(selector);
+    input.value = value;
+    input.dispatchEvent(new Event(event, { bubbles: true }));
+  };
+  const reset = (records) => {
+    workspace.setRequestState({ parseInFlight: false, checkInFlight: false });
+    workspace._requiresParse = false;
+    workspace.surface = surface(records);
+  };
+  try {
+    reset([]);
+    assert(button('submit-active').disabled && button('submit-all').disabled, 'Empty form disables both submission buttons');
+    assert(getComputedStyle(button('submit-active')).backgroundColor === 'rgb(1, 2, 3)', 'Disabled Submit background follows the host design token');
+    edit('[name="name"]', 'Alex');
+    edit('[name="dob"]', '2005-01-01');
+    edit('[name="gender"]', 'Other');
+    edit('[name="courseId"]', '42', 'change');
+    assert(workspace.records.length === 1 && workspace.records[0].courseId === '42', 'Manual field entry creates an editable enrollment record');
+    assert(button('submit-active').disabled, 'Filled enrollment fields require validation before submission');
+    button('check').click();
+    workspace.surface = { records: [{ id: 'record-1', valid: true }] };
+    workspace.setRequestState({ checkInFlight: false });
+    assert(!button('submit-active').disabled && workspace.records[0].name === 'Alex', 'Validation-only replies preserve manual values and enable Submit');
+    button('submit-active').click();
+    assert(assembler.open && assembler.items.length === 1, 'Submitting a manually completed and validated record opens Assembler');
+    assembler.open = false;
+    assembler.items = [];
+    reset([{ ...record, valid: undefined }]);
+    assert(button('submit-active').disabled, 'Unvalidated records cannot submit');
+    reset([{ ...record, valid: false }]);
+    assert(button('submit-active').disabled, 'Invalid records cannot submit');
+    reset([{ ...record, values: { ...record.values, name: '   ' } }]);
+    assert(button('submit-active').disabled, 'Missing required values override valid=true');
+    workspace.surface = { ...surface([{ ...record, values: { ...record.values, name: '' } }]), fields: [] };
+    assert(button('submit-active').disabled, 'Empty schemas retain the default required enrollment fields');
+    reset([{ ...record, values: { ...record.values, name: 'Name longer than twenty characters' } }]);
+    assert(button('submit-active').disabled, 'Field length constraints override valid=true');
+    reset();
+    assert(!button('submit-active').disabled && !button('submit-all').disabled, 'Valid parsed records enable submission');
+    edit('[name="name"]', 'Blair');
+    assert(button('submit-active').disabled && workspace.records[0].valid === false, 'Field edits clear previous validation');
+    let submissions = 0;
+    workspace.addEventListener('buddy-submit', () => submissions++);
+    workspace.addEventListener('buddy-submit-all', () => submissions++);
+    button('submit-active').dispatchEvent(new MouseEvent('click'));
+    button('submit-all').dispatchEvent(new MouseEvent('click'));
+    assert(submissions === 0 && workspace.savedRecordIds.size === 0, 'Forced clicks cannot bypass invalid submission guards');
+    button('check').click();
+    workspace.surface = surface();
+    workspace.setRequestState({ checkInFlight: false });
+    assert(!button('submit-active').disabled, 'Successful validation enables submission after structured field edits');
+    button('parse').click();
+    assert(button('submit-active').disabled, 'Parsing keeps submission disabled');
+    workspace.surface = surface();
+    assert(button('submit-active').disabled, 'Successful reply remains blocked until request completes');
+    workspace.setRequestState({ parseInFlight: false });
+    assert(!button('submit-active').disabled, 'Successful reparse and validation re-enable submission');
+    edit('.buddy-ws-textarea', 'Updated raw data');
+    assert(button('submit-active').disabled && button('submit-all').disabled, 'Raw input edits invalidate all submission');
+    button('parse').click();
+    edit('.buddy-ws-textarea', 'Newer raw data');
+    workspace.surface = surface();
+    workspace.setRequestState({ parseInFlight: false });
+    assert(button('submit-active').disabled && workspace.buddyText === 'Newer raw data', 'Stale parse replies cannot validate or replace newer input');
+    reset();
+    edit('[name="courseId"]', '', 'change');
+    assert(button('submit-active').disabled, 'Select changes invalidate previous validation');
+    reset([record, { ...record, id: 'student-2', valid: false }]);
+    assert(!button('submit-active').disabled && button('submit-all').disabled, 'Submit All requires every record to be valid');
+    reset();
+    button('check').click();
+    assert(button('submit-active').disabled, 'Validation in progress blocks submission');
+    edit('[name="name"]', 'Changed during check');
+    workspace.surface = surface();
+    workspace.setRequestState({ checkInFlight: false });
+    assert(button('submit-active').disabled && workspace.records[0].name === 'Changed during check', 'Stale validation replies cannot overwrite field edits');
+    reset();
+    button('clear').click();
+    assert(button('submit-active').disabled && workspace.records[0].courseId === '', 'Clear invalidates validation and clears course ID');
+    edit('[name="name"]', 'Alex');
+    edit('[name="dob"]', '2005-01-01');
+    edit('[name="gender"]', 'Other');
+    edit('[name="courseId"]', '42', 'change');
+    button('check').click();
+    workspace.surface = { records: [{ id: 'student-1', valid: true }] };
+    workspace.setRequestState({ checkInFlight: false });
+    assert(!button('submit-active').disabled, 'Cleared and refilled fields can be validated without raw-text parsing');
+    reset();
+    button('submit-active').click();
+    assert(submissions === 1, 'Valid record emits a submission event');
+    assert(assembler.open && assembler.items.length === 1, 'Enrollment submission opens Assembler with activity');
+    assert(assembler.items[0].text === 'Submission requested for Alex.' && !workspace.textContent.includes('✓ Saved'), 'Enrollment submit waits for backend confirmation before showing Saved');
+    assembler.open = false;
+    assembler.items = [];
+    const container = document.createElement('acp-dynamic-container');
+    document.body.append(container);
+    container.title = 'Bulk student enrollment';
+    container.formSpec = { formId: 'test-standard', title: 'Test form', fields: [
+      { id: 'name', label: 'Name', type: 'text', required: true },
+      { id: 'locked', label: 'Locked', type: 'text', required: true, disabled: true },
+    ] };
+    container.open = true;
+    assert(container.querySelector('.acp-container-header__title').textContent === 'Workspace', 'Workspace pane title stays stable for bulk enrollment');
+    const standardSubmit = container.querySelector('[type="submit"]');
+    const standardInput = container.querySelector('[name="name"]');
+    assert(standardSubmit.disabled, 'Standard dynamic forms start with Submit disabled');
+    standardInput.value = '   ';
+    standardInput.dispatchEvent(new Event('input', { bubbles: true }));
+    assert(standardSubmit.disabled, 'Whitespace does not satisfy required fields');
+    standardInput.value = 'Alex';
+    standardInput.dispatchEvent(new Event('input', { bubbles: true }));
+    assert(!standardSubmit.disabled, 'Filling valid required fields enables standard form Submit');
+    standardSubmit.click();
+    assert(assembler.open && assembler.items.length === 1, 'Standard form submission opens Assembler');
+    assert(assembler.items[0].text === 'Submission requested.' && assembler.items[0].kind !== 'success', 'Submit activity does not claim unconfirmed persistence');
+    standardInput.value = '';
+    standardInput.dispatchEvent(new Event('input', { bubbles: true }));
+    assert(standardSubmit.disabled, 'Removing a required value disables standard form Submit again');
+    document.querySelector('#results').textContent = results.join('\n') + '\nAll ' + results.length + ' checks passed.';
+    document.body.dataset.testResult = 'passed';
+  } catch (error) {
+    document.querySelector('#results').textContent = results.join('\n') + '\nFAIL: ' + error.message;
+    document.body.dataset.testResult = 'failed';
+    throw error;
+  }
+</script>
+</html>

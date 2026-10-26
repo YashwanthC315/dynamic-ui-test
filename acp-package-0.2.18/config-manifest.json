@@ -1,0 +1,47 @@
+{
+  "packageVersion": "0.2.18",
+  "keys": [
+    {
+      "name": "AGENT_FILE_RUN_API_URL",
+      "required": true,
+      "secret": false,
+      "addedIn": "0.2.4",
+      "purpose": "HTTP and WebSocket base URL for the agent-file-run service."
+    },
+    {
+      "name": "AGENT_FILE_RUN_BEARER_TOKEN",
+      "required": true,
+      "secret": true,
+      "addedIn": "0.2.4",
+      "purpose": "Bearer credential for harness requests; a runtime getBearerToken provider may be used instead."
+    },
+    {
+      "name": "AGENT_FILE_RUN_AGENT_PATH",
+      "required": true,
+      "secret": false,
+      "addedIn": "0.2.4",
+      "purpose": "Agent path used for chat prompts."
+    },
+    {
+      "name": "AGENT_SUGGESTIONS_AGENT_PATH",
+      "required": false,
+      "secret": false,
+      "addedIn": "0.2.4",
+      "purpose": "Optional agent path used to generate suggestions."
+    },
+    {
+      "name": "AGENT_CHAT_HISTORY_MAX",
+      "required": false,
+      "secret": false,
+      "addedIn": "0.2.11",
+      "purpose": "Maximum prior user/assistant messages included in a prompt; defaults to 20."
+    },
+    {
+      "name": "AGENT_FILE_RUN_OWNER_ID",
+      "required": false,
+      "secret": false,
+      "addedIn": "0.2.12",
+      "purpose": "Static owner identity; prefer config.getOwnerId when identity changes at runtime."
+    }
+  ]
+}
