@@ -1,4 +1,4 @@
-# agent_spec.md — ACP Chat Panel Integration Spec
+# reverb_spec.md — Agentic Chat Panel Integration Spec
 
 **Package:** `@acp/chat-panel` v0.2.18
 **Audience:** The coding agent integrating the chat panel into the host application.
