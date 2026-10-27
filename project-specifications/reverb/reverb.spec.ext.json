@@ -1,0 +1,399 @@
+{
+  "schemaVersion": "1.0",
+  "specId": "acp.chat-panel",
+  "component": {
+    "package": "@acp/chat-panel",
+    "version": "0.3.0",
+    "scope": [
+      "Chat custom element",
+      "Dynamic Workspace custom element",
+      "Buddy enrollment custom element",
+      "Assembler activity custom element",
+      "Optional Agent File Run harness connector"
+    ]
+  },
+  "sourceMetadata": {
+    "repository": "YashwanthC315/ctng4",
+    "commit": "c9aad79826c1fecb2701421d8c64fb7d1802a1aa",
+    "branch": "agent-chat-agent-impl-aetheris-harness",
+    "generatedAt": "2026-10-27T05:44:38Z",
+    "generation": {
+      "mode": "manual-static-review",
+      "parserVersion": "manual-static-review/1.0",
+      "astParsed": false,
+      "columnLocationsAvailable": false,
+      "notes": "Static extraction from the published package files; no AST parser or runtime reflection was used."
+    },
+    "sources": [
+      {
+        "path": "acp-package-0.3.0/package.json",
+        "role": "Package identity, exports, and shipped file list"
+      },
+      {
+        "path": "acp-package-0.3.0/dist/acp-chat-panel.d.ts",
+        "role": "Published custom-element and data type declarations",
+        "locations": [
+          { "symbol": "AcpChatRole", "lineStart": 6, "lineEnd": 6 },
+          { "symbol": "AcpChatBlockType", "lineStart": 8, "lineEnd": 17 },
+          { "symbol": "AcpChatMessage", "lineStart": 52, "lineEnd": 59 },
+          { "symbol": "AcpFormSpec", "lineStart": 92, "lineEnd": 100 },
+          { "symbol": "BuddyRecord", "lineStart": 126, "lineEnd": 136 },
+          { "symbol": "AcpChatPanel", "lineStart": 138, "lineEnd": 158 },
+          { "symbol": "AcpDynamicContainer", "lineStart": 160, "lineEnd": 179 },
+          { "symbol": "BuddyEnrolWorkspaceSurface", "lineStart": 181, "lineEnd": 191 },
+          { "symbol": "AcpActionsPane", "lineStart": 193, "lineEnd": 217 }
+        ]
+      },
+      {
+        "path": "acp-package-0.3.0/dist/acp-harness-bridge.d.ts",
+        "role": "Published connector configuration, options, and exported function declarations",
+        "locations": [
+          { "symbol": "AcpHarnessConfig", "lineStart": 3, "lineEnd": 22 },
+          { "symbol": "AcpHarnessEnvironment", "lineStart": 24, "lineEnd": 31 },
+          { "symbol": "AcpHarnessOptions", "lineStart": 33, "lineEnd": 46 },
+          { "symbol": "AcpHarnessConnection", "lineStart": 48, "lineEnd": 57 },
+          { "symbol": "connectAcpHarness", "lineStart": 59, "lineEnd": 59 },
+          { "symbol": "buildAcpFileRunPrompt", "lineStart": 60, "lineEnd": 64 },
+          { "symbol": "parseAcpHarnessReply", "lineStart": 65, "lineEnd": 71 },
+          { "symbol": "stripAcpCodeFence", "lineStart": 73, "lineEnd": 73 },
+          { "symbol": "encodeAcpBearerSubprotocol", "lineStart": 74, "lineEnd": 74 }
+        ]
+      },
+      {
+        "path": "acp-package-0.3.0/dist/acp-chat-panel.js",
+        "role": "Published custom-element implementation",
+        "locations": [
+          { "symbol": "acp-message-sent dispatch", "lineStart": 799, "lineEnd": 799 },
+          { "symbol": "acp-form-requested dispatch", "lineStart": 813, "lineEnd": 813 },
+          { "symbol": "acp-submitted dispatch", "lineStart": 1257, "lineEnd": 1257 },
+          { "symbol": "Buddy parse/check/submit dispatch", "lineStart": 1617, "lineEnd": 1732 },
+          { "symbol": "custom element registration", "lineStart": 2125, "lineEnd": 2128 }
+        ]
+      },
+      {
+        "path": "acp-package-0.3.0/dist/acp-harness-bridge.js",
+        "role": "Published optional connector implementation",
+        "locations": [
+          { "symbol": "stripAcpCodeFence", "lineStart": 29, "lineEnd": 29 },
+          { "symbol": "parseAcpHarnessReply", "lineStart": 58, "lineEnd": 58 },
+          { "symbol": "buildAcpFileRunPrompt", "lineStart": 109, "lineEnd": 109 },
+          { "symbol": "encodeAcpBearerSubprotocol", "lineStart": 120, "lineEnd": 120 },
+          { "symbol": "connectAcpHarness", "lineStart": 312, "lineEnd": 312 },
+          { "symbol": "owner thread listing", "lineStart": 397, "lineEnd": 397 },
+          { "symbol": "thread creation", "lineStart": 421, "lineEnd": 421 },
+          { "symbol": "run POST", "lineStart": 508, "lineEnd": 508 },
+          { "symbol": "run events WebSocket", "lineStart": 537, "lineEnd": 537 }
+        ]
+      },
+      {
+        "path": "acp-package-0.3.0/config-manifest.json",
+        "role": "Connector environment configuration keys"
+      },
+      {
+        "path": "acp-package-0.3.0/tests/harness-history.html",
+        "role": "Browser regression fixture for harness history"
+      },
+      {
+        "path": "acp-package-0.3.0/tests/submission-gating.html",
+        "role": "Browser regression fixture for enrollment submission gating"
+      }
+    ]
+  },
+  "packageExports": {
+    ".": "dist/acp-chat-panel.js",
+    "./harness": "harness.js",
+    "./styles.css": "styles/acp-chat-panel.css",
+    "./tokens.css": "styles/acp-tokens.css"
+  },
+  "customElements": [
+    {
+      "tag": "acp-chat-panel",
+      "class": "AcpChatPanel",
+      "properties": [
+        "open",
+        "title",
+        "placeholder",
+        "maxLength",
+        "width",
+        "minWidth",
+        "maxWidth",
+        "dock",
+        "formTriggerPrefix",
+        "agentDisplay",
+        "pending",
+        "messages",
+        "chatHistory"
+      ],
+      "methods": [
+        "startNewChat()",
+        "toggleSearch()",
+        "clearSearch()",
+        "toggleHistory()",
+        "sendMessage(text)"
+      ]
+    },
+    {
+      "tag": "acp-dynamic-container",
+      "class": "AcpDynamicContainer",
+      "properties": [
+        "open",
+        "explicitlyClosed (readonly)",
+        "title",
+        "formWidth",
+        "minFormWidth",
+        "maxFormWidth",
+        "formHeight",
+        "minFormHeight",
+        "minimized",
+        "maximized",
+        "formSpec",
+        "surface"
+      ],
+      "methods": ["collapse()", "maximize()", "restore()", "close()"]
+    },
+    {
+      "tag": "buddy-enrol-workspace-surface",
+      "class": "BuddyEnrolWorkspaceSurface",
+      "properties": [
+        "formId",
+        "surface",
+        "records",
+        "activeRecordId",
+        "buddyText",
+        "parseInFlight",
+        "checkInFlight"
+      ],
+      "methods": ["setRequestState(state)"]
+    },
+    {
+      "tag": "acp-actions-pane",
+      "class": "AcpActionsPane",
+      "properties": [
+        "open",
+        "title",
+        "width",
+        "minWidth",
+        "maxWidth",
+        "height",
+        "minHeight",
+        "items",
+        "menuActions",
+        "minimized",
+        "maximized"
+      ],
+      "methods": ["collapse()", "maximize()", "restore()", "close()"]
+    }
+  ],
+  "publicTypes": {
+    "chatRoles": ["user", "assistant", "system", "error"],
+    "chatBlockTypes": [
+      "text",
+      "markdown",
+      "status",
+      "data",
+      "suggestions",
+      "form",
+      "confirmation",
+      "link",
+      "error"
+    ],
+    "formFieldTypes": ["text", "number", "date", "checkbox", "select", "textarea"],
+    "activityKinds": ["info", "success", "warning", "error"],
+    "types": [
+      "AcpChatAction",
+      "AcpChatSuggestion",
+      "AcpDataRowItem",
+      "AcpChatBlock",
+      "AcpChatMessage",
+      "AcpChatHistoryItem",
+      "AcpFieldValidation",
+      "AcpSelectOption",
+      "AcpFieldSpec",
+      "AcpFormSpec",
+      "AcpFormRequestedEvent",
+      "AcpActivityAction",
+      "AcpActivityItem",
+      "AcpActionsRequestedEvent",
+      "BuddyRecord"
+    ]
+  },
+  "events": [
+    "acp-action-click",
+    "acp-actions-close",
+    "acp-actions-height-change",
+    "acp-actions-requested",
+    "acp-actions-width-change",
+    "acp-cancelled",
+    "acp-cancel-request",
+    "acp-confirmation-action",
+    "acp-form-height-change",
+    "acp-form-requested",
+    "acp-form-width-change",
+    "acp-help",
+    "acp-history-toggle",
+    "acp-link-click",
+    "acp-menu-action-click",
+    "acp-message-sent",
+    "acp-navigate",
+    "acp-new-chat",
+    "acp-open-actions",
+    "acp-open-change",
+    "acp-restore-conversation",
+    "acp-restore-default-split",
+    "acp-search-toggle",
+    "acp-submitted",
+    "acp-suggestion-click",
+    "acp-width-change",
+    "acp-workspace-maximize",
+    "buddy-cancel",
+    "buddy-check",
+    "buddy-clear",
+    "buddy-parse",
+    "buddy-submit",
+    "buddy-submit-all"
+  ],
+  "eventMechanics": {
+    "dispatch": "CustomEvent",
+    "bubbles": true,
+    "composed": true,
+    "eventNames": "Statically enumerated from new CustomEvent dispatches in dist/acp-chat-panel.js."
+  },
+  "harness": {
+    "exports": [
+      "connectAcpHarness",
+      "buildAcpFileRunPrompt",
+      "parseAcpHarnessReply",
+      "stripAcpCodeFence",
+      "encodeAcpBearerSubprotocol"
+    ],
+    "connectionMembers": [
+      "conversationId",
+      "ready",
+      "sendMessage(prompt, options?)",
+      "refreshHistory()",
+      "cancel()",
+      "disconnect()"
+    ],
+    "environmentKeys": [
+      {
+        "name": "AGENT_FILE_RUN_API_URL",
+        "required": true,
+        "secret": false
+      },
+      {
+        "name": "AGENT_FILE_RUN_BEARER_TOKEN",
+        "required": true,
+        "secret": true,
+        "runtimeProviderAlternative": "config.getBearerToken"
+      },
+      {
+        "name": "AGENT_FILE_RUN_AGENT_PATH",
+        "required": true,
+        "secret": false
+      },
+      {
+        "name": "AGENT_SUGGESTIONS_AGENT_PATH",
+        "required": false,
+        "secret": false
+      },
+      {
+        "name": "AGENT_CHAT_HISTORY_MAX",
+        "required": false,
+        "secret": false,
+        "default": 20
+      },
+      {
+        "name": "AGENT_FILE_RUN_OWNER_ID",
+        "required": false,
+        "secret": false
+      }
+    ],
+    "httpAndSocketCalls": [
+      {
+        "method": "GET",
+        "path": "/api/playground/owners/{owner_id}/threads",
+        "line": 397
+      },
+      {
+        "method": "POST",
+        "path": "/api/playground/threads",
+        "line": 421
+      },
+      {
+        "method": "POST",
+        "path": "/api/playground/agent-file-runs",
+        "line": 508
+      },
+      {
+        "method": "GET",
+        "path": "/api/playground/owners/{owner_id}/threads/{thread_id}/runs",
+        "line": 430
+      },
+      {
+        "method": "GET",
+        "path": "/api/playground/runs/{run_id}/events",
+        "line": 438,
+        "purpose": "Read stored run events during conversation restoration."
+      },
+      {
+        "method": "WebSocket",
+        "path": "/api/playground/runs/{run_id}/events/ws",
+        "line": 537
+      }
+    ],
+    "authentication": "HTTP requests use a Bearer authorization header; the run-event socket uses the encoded bearer subprotocol.",
+    "historyOwnership": "Harness-backed and owner-scoped; no browser storage persistence is implemented.",
+    "promptHistoryLimitDefault": 20
+  },
+  "dependencies": {
+    "npmRuntimeDependenciesDeclared": [],
+    "platformApis": [
+      "HTMLElement",
+      "customElements",
+      "CustomEvent",
+      "fetch",
+      "WebSocket"
+    ],
+    "externalService": {
+      "optional": true,
+      "type": "Agent File Run HTTP and WebSocket service",
+      "databaseAccessByPackage": false
+    },
+    "hostResponsibilities": [
+      "Authentication and authorized runtime token",
+      "Stable owner identity and server-side authorization",
+      "Router navigation",
+      "Domain validation and persistence",
+      "Application shell and sidebar"
+    ]
+  },
+  "testsAndCoverage": {
+    "fixtures": [
+      {
+        "path": "acp-package-0.3.0/tests/harness-history.html",
+        "title": "Harness History Regression Tests",
+        "executionStatus": "not run for this extraction"
+      },
+      {
+        "path": "acp-package-0.3.0/tests/submission-gating.html",
+        "title": "Enrollment Submission Regression Tests",
+        "executionStatus": "not run for this extraction"
+      }
+    ],
+    "coveragePercentage": null,
+    "coverageStatus": "Not measured; the package README states the v0.3.0 tests/builds/browser checks were not run."
+  },
+  "observedInvariants": [
+    "Element registration is guarded with customElements.get before customElements.define.",
+    "Custom events are emitted with bubbles and composed enabled.",
+    "The optional harness creates owner-scoped thread requests and attaches owner_id/thread_id to runs when configured.",
+    "The package requests chat persistence through the harness but has no direct database/model imports.",
+    "Form submission is not equivalent to host persistence confirmation."
+  ],
+  "notSpecifiedOrNotObserved": [
+    "AST node columns; this extraction was not AST-generated.",
+    "Coverage percentage and runtime test outcomes.",
+    "Latency, availability, concurrency, and rate-limit targets.",
+    "A package-owned persistence database or SQL schema."
+  ]
+}

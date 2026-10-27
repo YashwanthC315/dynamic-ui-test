@@ -1,0 +1,224 @@
+spec_version: "1.0"
+metadata:
+  id: "acp.chat-panel"
+  name: "ACP Chat Panel"
+  version: "0.3.0"
+  lifecycle: draft
+  owner: "Unspecified; assign the owning team or CODEOWNERS entry before approval."
+  scope: "The complete @acp/chat-panel package: chat, Workspace, Buddy enrollment, Assembler, and its optional harness connector."
+  provenance:
+    package_manifest: "../../acp-package-0.3.0/package.json"
+    api_reference: "../../acp-package-0.3.0/SPEC_DOC.md"
+    integration_contract: "../../acp-package-0.3.0/INTEGRATION_SPEC.md"
+    release_notes: "../../acp-package-0.3.0/README.md"
+  design_references: []
+
+component:
+  package: "@acp/chat-panel"
+  kind: "Framework-agnostic browser Custom Elements"
+  purpose: >-
+    Provide a docked chat panel with optional dynamic-form/Buddy Workspace and
+    activity-log Assembler panes. An optional connector can communicate with
+    an Agent File Run service; the host retains navigation, authorization, and
+    domain persistence responsibilities.
+
+contract:
+  interfaces:
+    registration:
+      module: "@acp/chat-panel"
+      elements:
+        - tag: "acp-chat-panel"
+          responsibility: "Chat messages, composer, search, conversation history, and chat pane controls."
+        - tag: "acp-dynamic-container"
+          responsibility: "Dynamic form and information Workspace."
+        - tag: "buddy-enrol-workspace-surface"
+          responsibility: "Specialized multi-record Buddy enrollment form surface."
+        - tag: "acp-actions-pane"
+          responsibility: "Activity log and activity action menu, presented as Assembler."
+      styles:
+        - "@acp/chat-panel/tokens.css"
+        - "@acp/chat-panel/styles.css"
+    public_data_types:
+      chat:
+        roles: [user, assistant, system, error]
+        block_types: [text, markdown, status, data, suggestions, form, confirmation, link, error]
+        message:
+          required: [id, role]
+          optional: [text, blocks, timestamp, agent]
+        history_item:
+          required: [id, title, updatedAt]
+      forms:
+        field_types: [text, number, date, checkbox, select, textarea]
+        field:
+          required: [id, label, type]
+          optional: [required, disabled, placeholder, optionsSource, options, validation]
+          validation_bounds: [min, max, maxLength]
+        form:
+          required: [formId, title, fields]
+          optional: [description, submitLabel, cancelLabel, initialValues]
+      activity:
+        kinds: [info, success, warning, error]
+        item_required: [id, kind, text]
+        item_optional: [recordId, actions]
+      buddy_record:
+        required: [id, name]
+        optional: [dob, gender, course, email, mobile, fatherName, valid]
+    element_properties:
+      chat:
+        - "open: boolean"
+        - "title, placeholder, formTriggerPrefix, agentDisplay: string"
+        - "maxLength, width, minWidth, maxWidth: number"
+        - "dock: left | right"
+        - "pending: boolean"
+        - "messages: AcpChatMessage[]"
+        - "chatHistory: AcpChatHistoryItem[]"
+      workspace:
+        - "open: boolean"
+        - "explicitlyClosed: readonly boolean"
+        - "title: string"
+        - "formWidth, minFormWidth, maxFormWidth: number"
+        - "formHeight: number | null"
+        - "minFormHeight: number"
+        - "minimized, maximized: boolean"
+        - "formSpec: AcpFormSpec | null"
+        - "surface: Record<string, unknown> | null"
+      buddy_workspace:
+        - "formId, activeRecordId, buddyText: string"
+        - "surface: unknown"
+        - "records: BuddyRecord[]"
+        - "parseInFlight, checkInFlight: boolean"
+      assembler:
+        - "open: boolean"
+        - "title: string"
+        - "width, minWidth, maxWidth, minHeight: number"
+        - "height: number | null"
+        - "items: AcpActivityItem[]"
+        - "menuActions: AcpActivityAction[]"
+        - "minimized, maximized: boolean"
+    events:
+      general:
+        - "acp-open-change: boolean"
+        - "acp-message-sent: string"
+        - "acp-width-change: number"
+        - "acp-new-chat"
+        - "acp-search-toggle"
+        - "acp-history-toggle"
+        - "acp-restore-conversation: { conversationId: string }"
+        - "acp-cancel-request"
+        - "acp-suggestion-click"
+        - "acp-navigate: { href: string }"
+        - "acp-link-click"
+        - "acp-confirmation-action"
+        - "acp-help"
+        - "acp-restore-default-split"
+        - "acp-workspace-maximize"
+      workspace:
+        - "acp-form-requested: { formSpec: AcpFormSpec }"
+        - "acp-submitted"
+        - "acp-form-width-change: number"
+        - "acp-form-height-change: number"
+      buddy_enrollment:
+        - "buddy-parse"
+        - "buddy-clear"
+        - "buddy-cancel"
+        - "buddy-check"
+        - "buddy-submit"
+        - "buddy-submit-all"
+      assembler:
+        - "acp-actions-requested: { open: true, item: AcpActivityItem }"
+        - "acp-open-actions"
+        - "acp-actions-close"
+        - "acp-actions-width-change: number"
+        - "acp-actions-height-change: number"
+        - "acp-action-click"
+        - "acp-menu-action-click"
+      event_delivery: "Custom DOM events bubble and are composed."
+    optional_harness_api:
+      module: "@acp/chat-panel/harness"
+      entry_function: "connectAcpHarness(options): AcpHarnessConnection"
+      connection_operations:
+        - "ready: Promise<void>"
+        - "sendMessage(prompt, options?): Promise<void>"
+        - "refreshHistory(): Promise<void>"
+        - "cancel(): void"
+        - "disconnect(): void"
+      configuration:
+        required_when_connector_enabled:
+          - "AGENT_FILE_RUN_API_URL"
+          - "AGENT_FILE_RUN_BEARER_TOKEN or a runtime getBearerToken provider"
+          - "AGENT_FILE_RUN_AGENT_PATH"
+        optional:
+          - "AGENT_SUGGESTIONS_AGENT_PATH"
+          - "AGENT_CHAT_HISTORY_MAX (defaults to 20 prior user/assistant messages)"
+          - "AGENT_FILE_RUN_OWNER_ID (prefer a runtime owner provider when identity changes)"
+        authentication: "Use the host-authorized bearer token; never embed or commit credentials."
+      endpoints:
+        - method: GET
+          path: "/api/playground/owners/{owner_id}/threads"
+          purpose: "List owner-scoped conversation threads."
+        - method: POST
+          path: "/api/playground/threads"
+          purpose: "Create or ensure a conversation thread."
+        - method: POST
+          path: "/api/playground/agent-file-runs"
+          purpose: "Start an agent file run with owner_id and thread_id when available."
+        - method: GET
+          path: "/api/playground/owners/{owner_id}/threads/{thread_id}/runs"
+          purpose: "List runs associated with an owner-scoped conversation thread."
+        - method: GET
+          path: "/api/playground/runs/{run_id}/events"
+          purpose: "Read stored events for each run during conversation restoration."
+        - method: WebSocket
+          path: "/api/playground/runs/{run_id}/events/ws"
+          purpose: "Stream run events."
+  behavior:
+    - "All panes start closed; opening Chat does not open Workspace or Assembler."
+    - "Place Chat beside the existing host sidebar. Workspace and Assembler overlay the routed-content stage without resizing routed content."
+    - "Keep the element instances mounted while toggling, resizing, minimizing, maximizing, or changing menus."
+    - "Workspace dimension-only changes preserve form DOM, values, validation/request state, focus, selection, and scroll. Only an intentional new form or surface replaces its content."
+    - "An explicitly closed Workspace stays closed until an explicit host or user reopen."
+    - "Workspace and Assembler have stable pane headings; form/agent titles label content and do not replace those headings."
+    - "Workspace requests and activity-log requests open their respective panes independently; Workspace changes do not implicitly open Assembler."
+    - "Pane widths are clamped to each element's configured bounds; minimized panes restore from a rail and maximize without closing an open sibling."
+    - "Standard form submission requires native validity and non-whitespace required values."
+    - "Buddy submission requires explicit valid: true, complete required fields, passing length limits, and no parse/check operation in flight."
+    - "Buddy raw-text edits require reparsing; structured edits and Clear require revalidation. Submit All requires at least one record and every record to pass."
+    - "Submission events request host processing and do not assert persistence. Saved state requires a later host surface update confirming saved: true."
+    - "When the connector is active, it owns chat message/history/pending state and surface dispatch; the host must not concurrently override those values."
+    - "Conversation history is owner-scoped in the harness, not browser storage. Resolve identity from explicit owner configuration or authenticated host context; do not invent an identity."
+    - "Hosts own sidebar/button, router navigation, authorization, runtime credentials, domain saves, and persistence."
+    - "Surfaces are opaque and styles are controlled through --acp-* CSS tokens."
+  failure_behavior:
+    - "Do not present a submit request as a successful save."
+    - "Invalid or incomplete Buddy parse/check responses must not enable submission."
+    - "Missing API URL or token configuration must be surfaced to the user/host; connector setup must not silently claim a successful request."
+    - "The package does not prescribe a fixed set of HTTP status codes; the connector treats unsuccessful HTTP responses as failures."
+  invariants:
+    - "No domain database or SQL table is owned or accessed by this package."
+    - "The host remains responsible for authorization and user isolation; owner-scoped history does not replace server-side authorization."
+    - "No measurable latency, throughput, concurrency, or rate-limit SLA is currently specified."
+
+non_functional_requirements:
+  latency: "Not specified."
+  availability: "Not specified."
+  concurrency: "Not specified."
+  rate_limits: "Not specified by the package; the external service governs them."
+  accessibility: "Use semantic/custom-element controls and keyboard-operable resize/interaction behavior implemented by the package; no formal conformance level is declared."
+
+dependencies:
+  runtime:
+    - "Browser Custom Elements, HTMLElement, CustomEvent, fetch, and WebSocket APIs."
+    - "Package CSS token and component styles."
+  optional_external:
+    - "Configured Agent File Run HTTP and WebSocket service when the harness connector is used."
+  host_owned:
+    - "Authenticated runtime token and stable user identity."
+    - "Application router, navigation, and domain persistence services."
+
+acceptance:
+  - "The four documented custom-element tags register and expose their declared public properties."
+  - "Custom events bubble and cross shadow boundaries; event details match the public event contract."
+  - "Initial pane visibility, independent pane behavior, resize/state-preservation behavior, and form submission gates match the behavior contract."
+  - "Harness history and runs use the configured authenticated owner/thread identity and the declared service routes."
+  - "Host persistence is not reported as complete until explicitly confirmed by the host."
+  - "No performance or availability threshold is considered accepted until an owner defines a measurable target."
