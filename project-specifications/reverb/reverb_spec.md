@@ -1,8 +1,8 @@
 # reverb_spec.md — Agentic Chat Panel Integration Spec
 
-**Package:** `@acp/chat-panel` v0.2.18
+**Package:** `@acp/chat-panel` v0.3.0
 **Audience:** The coding agent integrating the chat panel into the host application.
-**Source of truth:** ACP Chat Panel – Universal Application Integration Agent Guide (v0.2.18).
+**Source of truth:** ACP Chat Panel – Universal Application Integration Agent Guide (v0.3.0).
 
 Every rule below is mandatory and must be verifiable. Follow the sections **in order**. Do not skip "simple" rules. Do not mark the task complete until the Final Verification Checklist (Section 16) passes.
 
