@@ -93,4 +93,47 @@ The package enforces Chat before the stage and aligns the Workspace/Assembler la
 
 Do not bind static `messages` or `pending` values or handle `acp-message-sent` separately while the harness connector is active. Angular hosts need `CUSTOM_ELEMENTS_SCHEMA`. The host remains responsible for router navigation, authorization, and domain saves.
 
+## Example Prompt
+
+```
+Integrate acp-chat-panel-0.3.6.tgz into this app, following AGENT_GUIDE.md and INTEGRATION_SPEC.md (read INTEGRATION_SPEC.md sections 1-15 in order first).
+
+Context
+- The package is already installed with npm. It is not integrated anywhere in this branch.
+- The Agent Harness is already running in a separate repository. Do not start, modify, or look for it.
+- Make host-app changes only. Never edit anything in node_modules/@acp/chat-panel.
+
+Configuration (add to the app's existing env/config files, following its existing convention; compare with config-manifest.json and add only the keys needed)
+- AGENT_FILE_RUN_API_URL: http://localhost:4001
+- AGENT_FILE_RUN_BEARER_TOKEN: <MATCHING_LOCAL_DEV_TOKEN>
+- AGENT_FILE_RUN_AGENT_PATH: ct-bot/agents/main.exs
+- AGENT_SUGGESTIONS_AGENT_PATH: ct-bot/agents/suggestions.exs
+Put the token only in a local/dev env file that is git-ignored. Do not hardcode it in source, and do not print it in your output. If the dev env file is tracked by git, tell me instead of committing the token.
+
+Integration requirements
+- Reuse the app's existing side navigation and add the single AI Agent button at its bottom. Create a new sidebar only if none exists. Do not add anything to a header or top bar.
+- Mount the three elements (chat, workspace, assembler) once in the app shell, not in a routed page. Follow the guide's template, controller, and layout exactly, including the session-reset wiring (Rules 17 and 18). Pass chat, workspace, and actions to connectAcpHarness.
+- Owner id: use the authenticated user's stable id from the app's existing auth state via getOwnerId. Never invent or generate one. If there is no usable auth/user id, tell me what you found instead of guessing.
+- Map the guide's design tokens to the app's existing theme tokens, keeping pane surfaces opaque.
+- No domain save service is being wired: use the guide's non-persisting submission handlers and report persistence as unwired.
+
+Scope rules
+- Change only what is needed for the integration. Do not refactor, restyle, rename, or reformat existing code, and do not fix unrelated issues. If something outside the integration seems to need changing, stop and tell me.
+- Do not add dependencies other than the already-installed package.
+
+Verification
+- Do NOT run the app in a browser, do UI testing, or send harness/authenticated requests. I will test manually.
+- You may run the app's existing build, type-check, and lint commands and report the results. Report pre-existing failures without fixing them.
+- Mark the guide's manual acceptance items as pending for me, not passed.
+
+Final handoff (use the guide's format)
+- List of changed files (no inline diffs).
+- Where the config keys and token were added.
+- Which auth source supplies the owner id.
+- Build/lint/type-check results.
+- Persistence marked as unwired.
+- The harness start instructions from Step 1.3 are not needed, since it is already running.
+- Anything you were unsure about or chose not to change.
+```
+
 See [AGENT_GUIDE.md](./AGENT_GUIDE.md) for the full shell integration and [SPEC_DOC.md](./SPEC_DOC.md) for element and event contracts.
