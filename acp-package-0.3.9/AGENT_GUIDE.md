@@ -1,4 +1,4 @@
-# ACP Chat Panel - Universal Application Integration Agent Guide (v0.3.8)
+# ACP Chat Panel - Universal Application Integration Agent Guide (v0.3.9)
 
 ## Mandatory Execution Order and Evidence
 
@@ -8,7 +8,7 @@ For this release the package has been prepared without running tests, builds, br
 
 ### Core Integration Rules (read before editing the host)
 
-1. Install `acp-chat-panel-0.3.8.tgz`. Integration changes are made **only in the host application**: never edit files inside `node_modules/@acp/chat-panel` or the package's `dist/`, and never add a second instance of any element. Preserve existing host configuration values and secrets.
+1. Install `acp-chat-panel-0.3.9.tgz`. Integration changes are made **only in the host application**: never edit files inside `node_modules/@acp/chat-panel` or the package's `dist/`, and never add a second instance of any element. Preserve existing host configuration values and secrets.
 2. Keep all three elements mounted for the entire shell lifetime. Do not use `*ngIf`, changing `key` values, `innerHTML`, or destroy/recreate logic for pane visibility, dimensions, minimized state, or menus.
 3. Bind dimensions only to the numeric properties/events shown below. Never reassign `formSpec`, `surface`, `initialValues`, `records`, or `buddyText` from a resize handler. Never use a resize callback to reconnect the harness or replay an agent response.
 4. Workspace width, height, corner drag, keyboard resize, minimize/restore, maximize/restore, menu changes, and close/reopen retain the mounted form body. They must preserve raw text, structured fields, selected record, validation flags, parse/check state, focus, selection, and body scroll during dimension-only updates. Only an intentional new form/surface replaces form content. An equivalent form spec is not a reset instruction.
@@ -18,7 +18,7 @@ For this release the package has been prepared without running tests, builds, br
 
 ## Goal
 
-Integrate the `@acp/chat-panel` (v0.3.8) package into an application shell so that:
+Integrate the `@acp/chat-panel` (v0.3.9) package into an application shell so that:
 1. The application's existing side navigation has a single AI chat toggle button; create a side panel only when none exists.
 2. The chat panel opens **docked directly next to the sidebar** as a full-height workspace column.
 3. The panel connects to the **Agent Harness** via `@acp/chat-panel/harness`, providing real-time streaming replies, suggestion chips, conversation history, cancellation, and in-conversation search.
@@ -481,7 +481,7 @@ export class AppShellComponent implements AfterViewInit, OnDestroy {
 
 ## Step 4: Window Management (Rails & Restore)
 
-The ACP v0.3.8 package provides independent window management:
+The ACP v0.3.9 package provides independent window management:
 
 1. **Minimize (`−`)**: Collapses the pane into a slim vertical rail (`52px` wide) displaying a vertical label and close button.
 2. **Maximize (`⤢`)**: Expands that pane and its content to the available stage width while preserving an open sibling. Maximizing the sibling restores the currently maximized pane first.
@@ -543,7 +543,7 @@ The controller example is the explicit **non-persisting fallback**, not a save i
 
 ## Manual Acceptance Procedure
 
-These are instructions for the integrating owner/agent. They have **not** been executed in a real host for v0.3.8 (package-level lifecycle checks were run against a DOM simulation only). Record the entire numbered checklist in [INTEGRATION_SPEC.md](./INTEGRATION_SPEC.md), section 16, before declaring integration complete.
+These are instructions for the integrating owner/agent. They have **not** been executed in a real host for v0.3.9 (package-level lifecycle checks were run against a DOM simulation only). Record the entire numbered checklist in [INTEGRATION_SPEC.md](./INTEGRATION_SPEC.md), section 16, before declaring integration complete.
 
 1. Load the host at desktop and narrow viewport sizes. Verify existing top chrome and navigation are unchanged, exactly one AI button is at the bottom of the existing sidebar, all three panes are closed, and their wrappers reserve zero width. Toggle Chat and its close button; opening/closing it must not open or close either sibling.
 2. Open Chat. Confirm `sidebar | chat | stage`, full chat height, pinned composer, independent width drag, and message scrolling. Empty and whitespace-only drafts must disable Send with visibly disabled colors. A nonempty draft enables it; submitting clears the draft and disables it again.
@@ -557,7 +557,7 @@ These are instructions for the integrating owner/agent. They have **not** been e
 10. With no domain save handler, submit a valid standard form and each enrollment submission mode. Each must visibly report "Saving is not configured. No records were saved.", keep Workspace open, and show no Saved/success state. With a real authorized save service, verify its actual success/failure responses before enabling confirmed-save feedback.
 11. Use browser computed styles on `.acp-panel`, `.acp-container`, `.acp-actions-pane`, headers, composer, and rails. Verify their background alpha is 1 and their resolved colors match the chosen host tokens. Verify disabled Send/Submit use all three disabled-control tokens. The surface layer itself intentionally remains transparent so routed content is visible outside the opaque panes. Compare routed-content bounds before/after opening each overlay; they must not move or shrink.
 12. Session lifecycle: open Chat, send a message, request a form, and open Assembler. Click New Chat: Workspace and Assembler close, the transcript clears, and Assembler's old items do not return. Repeat and close Chat with its `×`, then again with the sidebar toggle: all three panes close. Reopen Chat: empty transcript and composer, search and Recent-chats closed, no "Thinking..." state; send a message and confirm old messages do not reappear. Request a form again: Workspace opens. Separately confirm that a user's own Workspace close is still respected for late responses.
-13. Bulk enrollment (when the agent returns a multi-student surface): paste raw text containing an invalid date and an unknown course, then click Prepare. The invalid values appear in the form (the bad date as text with a warning). Correct them in the form: the matching student's line in Raw Text Input updates and other students' lines do not. The course list is populated, Validate keeps it, and Submit enables after a valid check. When the agent supplies no course options, the package loads `mock-api/courses.json` relative to the document base URI (the app's `<base href>`); confirm that file is served at that path (open it in the browser). Do not hardcode courses or add host code to fetch them. For a different static path set `customElements.get('buddy-enrol-workspace-surface').defaultCourseCatalogUrl` once at startup; an authenticated course API is not supported by this fallback and must be supplied by the agent's surface.
+13. Bulk enrollment (when the agent returns a multi-student surface): paste raw text containing an invalid date and an unknown course, then click Prepare. The invalid values appear in the form (the bad date as text with a warning). Correct them in the form: the matching student's line in Raw Text Input updates and other students' lines do not. The course list is populated, Validate keeps it, and Submit enables after a valid check. When the agent supplies no course options, the package loads `mock-api/courses.json` relative to the document base URI (the app's `<base href>`); confirm that file is served at that path (open it in the browser). Selecting a course must update the student chip and the raw text once (no duplicate), and after a valid Validate the chip must still show the course and Submit must enable; if Validate does not pass, the form shows the agent's reason under the fields (report that text rather than changing host code). Do not hardcode courses or add host code to fetch them. For a different static path set `customElements.get('buddy-enrol-workspace-surface').defaultCourseCatalogUrl` once at startup; an authenticated course API is not supported by this fallback and must be supplied by the agent's surface.
 14. Perform the host's required build and login/dashboard/lazy-module checks when execution is authorized. Report failures without unrelated repairs. Keep the harness and domain service evidence separate from package/static evidence.
 
 ### Required Handoff Format
