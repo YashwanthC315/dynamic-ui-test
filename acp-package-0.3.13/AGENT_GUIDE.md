@@ -1,4 +1,4 @@
-# ACP Chat Panel - Universal Application Integration Agent Guide (v0.3.13, production-safe styles)
+# ACP Chat Panel - Universal Application Integration Agent Guide (v0.3.12)
 
 ## Mandatory Execution Order and Evidence
 
@@ -8,7 +8,7 @@ For this release the package has been prepared without running tests, builds, br
 
 ### Core Integration Rules (read before editing the host)
 
-1. Install `acp-chat-panel-0.3.13.tgz`. Integration changes are made **only in the host application**: never edit files inside `node_modules/@acp/chat-panel` or the package's `dist/`, and never add a second instance of any element. Preserve existing host configuration values and secrets.
+1. Install `acp-chat-panel-0.3.12.tgz`. Integration changes are made **only in the host application**: never edit files inside `node_modules/@acp/chat-panel` or the package's `dist/`, and never add a second instance of any element. Preserve existing host configuration values and secrets.
 2. Keep all three elements mounted for the entire shell lifetime. Do not use `*ngIf`, changing `key` values, `innerHTML`, or destroy/recreate logic for pane visibility, dimensions, minimized state, or menus.
 3. Bind dimensions only to the numeric properties/events shown below. Never reassign `formSpec`, `surface`, `initialValues`, `records`, or `buddyText` from a resize handler. Never use a resize callback to reconnect the harness or replay an agent response.
 4. Workspace width, height, corner drag, keyboard resize, minimize/restore, maximize/restore, menu changes, and close/reopen retain the mounted form body. They must preserve raw text, structured fields, selected record, validation flags, parse/check state, focus, selection, and body scroll during dimension-only updates. Only an intentional new form/surface replaces form content. An equivalent form spec is not a reset instruction.
@@ -18,7 +18,7 @@ For this release the package has been prepared without running tests, builds, br
 
 ## Goal
 
-Integrate the `@acp/chat-panel` (v0.3.13) package into an application shell so that:
+Integrate the `@acp/chat-panel` (v0.3.12) package into an application shell so that:
 1. The application's existing side navigation has a single AI chat toggle button; create a side panel only when none exists.
 2. The chat panel opens **docked directly next to the sidebar** as a full-height workspace column.
 3. The panel connects to the **Agent Harness** via `@acp/chat-panel/harness`, providing real-time streaming replies, suggestion chips, conversation history, cancellation, and in-conversation search.
@@ -84,7 +84,7 @@ The workspace row must follow this exact horizontal sequence:
 
 ## Design Tokens Contract
 
-Load the package's canonical `tokens.css` and `styles.css` globally in that order through the build tool's global stylesheet list (Step 1.1), not by importing them from TypeScript; do not copy token defaults into the host. The package maps its `--acp-*` tokens to `--app-*` values and fallbacks. Define the host variables that correspond to the existing application theme, including disabled-control colors, or override the relevant `--acp-*` tokens directly. Keep surfaces opaque and verify the rendered result using computed styles.
+Import the package's canonical `tokens.css` and `styles.css` globally in that order; do not copy token defaults into the host. The package maps its `--acp-*` tokens to `--app-*` values and fallbacks. Define the host variables that correspond to the existing application theme, including disabled-control colors, or override the relevant `--acp-*` tokens directly. Keep surfaces opaque and verify the rendered result using computed styles.
 
 ```css
 /* Replace each host token name with the application's existing design token. */
@@ -103,23 +103,12 @@ Load the package's canonical `tokens.css` and `styles.css` globally in that orde
 
 ## Step 1: Package Registration & Harness Configuration
 
-### 1.1 Register the Package and Load Its Stylesheets
-Register the component in the entrypoint (`src/main.ts`). Import only the JavaScript here:
+### 1.1 Import Bundle in App Entrypoint (`src/main.ts`)
 ```typescript
 import '@acp/chat-panel';
+import '@acp/chat-panel/tokens.css';
+import '@acp/chat-panel/styles.css';
 ```
-
-Load the two stylesheets through the build tool's **global stylesheet list**, tokens first, package styles second, and the host's own global styles last so the host's token overrides win. For Angular, edit `angular.json` (`projects.<name>.architect.build.options.styles`, and the `styles` of any build configuration that defines its own list, such as `production`):
-```json
-"styles": [
-  "node_modules/@acp/chat-panel/styles/acp-tokens.css",
-  "node_modules/@acp/chat-panel/styles/acp-chat-panel.css",
-  "src/styles.css"
-]
-```
-For other hosts, use that tool's equivalent (for example a CSS import in the entry file for Vite or webpack, where the bundler links it), and confirm the result with the production check in the verification list.
-
-**Do not import the CSS from TypeScript in an Angular host** (`import '@acp/chat-panel/styles.css'` in `main.ts`). `ng serve` injects such imports at runtime, so the panel looks right locally, but a production build emits them as a separate lazy `main-<hash>.css` file that `index.html` does not link and no script loads. The deployed app then renders the panel's markup with no styling at all. Recent TypeScript versions also reject these imports (TS2882) without a CSS module declaration.
 
 ### 1.2 Configure Harness Settings
 Follow the host application's existing configuration convention. The Angular `environment.ts` object below is an example, not a requirement. For a fresh install, add the manifest's required keys and optional keys only when their features are used. For an upgrade, compare [config-manifest.json](./config-manifest.json) with the existing host config, add only missing keys, and preserve every existing value.
@@ -492,7 +481,7 @@ export class AppShellComponent implements AfterViewInit, OnDestroy {
 
 ## Step 4: Window Management (Rails & Restore)
 
-The ACP v0.3.13 package provides independent window management:
+The ACP v0.3.12 package provides independent window management:
 
 1. **Minimize (`−`)**: Collapses the pane into a slim vertical rail (`52px` wide) displaying a vertical label and close button.
 2. **Maximize (`⤢`)**: Expands that pane and its content to the available stage width while preserving an open sibling. Maximizing the sibling restores the currently maximized pane first.
@@ -525,7 +514,6 @@ The ACP v0.3.13 package provides independent window management:
 | Course dropdown in the bulk enrollment form is empty | The agent supplied no course options and `mock-api/courses.json` is not reachable at the document base URI (404, wrong `<base href>`, or served behind auth). | Serve the file at `<base href>mock-api/courses.json`, or set `defaultCourseCatalogUrl`; check the browser console for the one-line catalog warning. |
 | Validate says "Course is unresolved" and Submit stays disabled | The agent validates the course against its own list instead of the `fields[courseId].options` the package sends with the request. | In the agent run, confirm the request's `[workspace fields]` contains the course options; update the agent to resolve against them. |
 | Assembler stays open after Workspace closes | The connector is not attached (or was disconnected), or the shell has no `acp-actions-pane`. | Keep one connector alive for the shell lifetime and pass `chat`, `workspace`, and `actions` (Rule 18). |
-| Panel is styled with `ng serve` but unstyled in the deployed or production build (plain markup, default fonts, no layout) | The package CSS is imported from TypeScript, so the production build emits it as an unlinked lazy `main-*.css` chunk. | Move `acp-tokens.css` and `acp-chat-panel.css` into the `angular.json` `styles` list (Step 1.1) and remove the CSS imports from `main.ts`. Re-run the production check. |
 | Chat displays `Agent reply WebSocket failed.` | The harness server (port 4001) is not running or CORS rejected the connection. | Start the harness server (`mix do app.config + aetheris server --port 4001`) and verify origins. |
 
 ### Verification Checklist
@@ -557,7 +545,7 @@ The controller example is the explicit **non-persisting fallback**, not a save i
 
 ## Manual Acceptance Procedure
 
-These are instructions for the integrating owner/agent. They have **not** been executed in a real host for v0.3.13 (package-level lifecycle checks were run against a DOM simulation only). Record the entire numbered checklist in [INTEGRATION_SPEC.md](./INTEGRATION_SPEC.md), section 16, before declaring integration complete.
+These are instructions for the integrating owner/agent. They have **not** been executed in a real host for v0.3.12 (package-level lifecycle checks were run against a DOM simulation only). Record the entire numbered checklist in [INTEGRATION_SPEC.md](./INTEGRATION_SPEC.md), section 16, before declaring integration complete.
 
 1. Load the host at desktop and narrow viewport sizes. Verify existing top chrome and navigation are unchanged, exactly one AI button is at the bottom of the existing sidebar, all three panes are closed, and their wrappers reserve zero width. Toggle Chat and its close button; opening/closing it must not open or close either sibling.
 2. Open Chat. Confirm `sidebar | chat | stage`, full chat height, pinned composer, independent width drag, and message scrolling. Empty and whitespace-only drafts must disable Send with visibly disabled colors. A nonempty draft enables it; submitting clears the draft and disables it again.
@@ -572,8 +560,7 @@ These are instructions for the integrating owner/agent. They have **not** been e
 11. Use browser computed styles on `.acp-panel`, `.acp-container`, `.acp-actions-pane`, headers, composer, and rails. Verify their background alpha is 1 and their resolved colors match the chosen host tokens. Verify disabled Send/Submit use all three disabled-control tokens. The surface layer itself intentionally remains transparent so routed content is visible outside the opaque panes. Compare routed-content bounds before/after opening each overlay; they must not move or shrink.
 12. Session lifecycle: open Chat, send a message, request a form, and open Assembler. Click New Chat: Workspace and Assembler close, the transcript clears, and Assembler's old items do not return. Repeat and close Chat with its `×`, then again with the sidebar toggle: all three panes close. Reopen Chat: empty transcript and composer, search and Recent-chats closed, no "Thinking..." state; send a message and confirm old messages do not reappear. Request a form again: Workspace opens. Separately confirm that a user's own Workspace close is still respected for late responses.
 13. Bulk enrollment (when the agent returns a multi-student surface): paste raw text containing an invalid date and an unknown course, then click Prepare. The invalid values appear in the form (the bad date as text with a warning). Correct them in the form: the matching student's line in Raw Text Input updates and other students' lines do not. The course list is populated, Validate keeps it, and Submit enables after a valid check. When the agent supplies no course options, the package loads `mock-api/courses.json` relative to the document base URI (the app's `<base href>`); confirm that file is served at that path (open it in the browser). Selecting a course must update the student chip and the raw text once (no duplicate), and after a valid Validate the chip must still show the course and Submit must enable; if Validate does not pass, the form shows the agent's reason under the fields (report that text rather than changing host code). Also confirm: an invalid date in the raw text is shown in the form; correcting it (or the course) in the form replaces it in the raw text; and clicking Validate does not change the raw text back. If Submit stays disabled after a successful Validate, the form explains why under the fields; report that text. The package sends this same course list to the agent with Prepare and Validate (in `fields[].options`, plus `labels` per student), so the agent must resolve and validate the selected course against `fields[courseId].options` from the request; if the form reports "Course is unresolved", check the agent's prompt/rules, not the host. Do not hardcode courses or add host code to fetch them. For a different static path set `customElements.get('buddy-enrol-workspace-surface').defaultCourseCatalogUrl` once at startup; an authenticated course API is not supported by this fallback and must be supplied by the agent's surface.
-14. Production check (the dev server alone is not sufficient): build the way deployment builds (for example `npm run build` or the Docker image) and confirm that a stylesheet linked from the built `index.html` contains the package rules (`grep -l acp-panel` over the built `.css` files, then confirm that file is one of the `<link rel="stylesheet">` entries), that no other built `.css` containing `acp-panel` is left unlinked, and that `@acp/chat-panel` is still registered in the built JavaScript. Serve the built output the way production serves it (same web server, base href, and sub-path) and repeat the layout checks of steps 1 to 3. If the host relies on the package's `mock-api/courses.json` course fallback, request it from the served origin and confirm it returns JSON rather than `index.html`. Report anything not run as pending.
-15. Perform the host's required build and login/dashboard/lazy-module checks when execution is authorized. Report failures without unrelated repairs. Keep the harness and domain service evidence separate from package/static evidence.
+14. Perform the host's required build and login/dashboard/lazy-module checks when execution is authorized. Report failures without unrelated repairs. Keep the harness and domain service evidence separate from package/static evidence.
 
 ### Required Handoff Format
 
