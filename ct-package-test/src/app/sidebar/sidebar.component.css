@@ -1,6 +1,6 @@
 .sidebar {
   width: 48px;
-  background: #101d3a;
+  background: #0b1222;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -13,8 +13,8 @@
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  background: #1c2b4f;
-  color: #b9c3dd;
+  background: #1e293b;
+  color: #94a3b8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,11 +26,11 @@
 }
 
 .sidebar-icon:hover {
-  background: #28406f;
-  color: #fff;
+  background: #334155;
+  color: #f1f5f9;
 }
 
 .sidebar-icon.active {
-  background: #ffffff;
-  color: #16305e;
+  background: #e2e8f0;
+  color: #0b1222;
 }
