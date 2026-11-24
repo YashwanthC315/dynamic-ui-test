@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Harness History Regression Tests</title>
+<link rel="stylesheet" href="../styles/acp-tokens.css">
+<link rel="stylesheet" href="../styles/acp-chat-panel.css">
+<pre id="results">Running...</pre>
+<script src="../dist/acp-chat-panel.js"></script>
+<script type="module">
+  import { connectAcpHarness } from '../harness.js';
+
+  const results = [];
+  const requests = [];
+  const threads = [{ owner_id: 'user-1', thread_id: 'existing-thread', title: 'Previous enrollment', last_active: '2026-10-22T01:00:00Z' }];
+  const runs = [];
+  const originalFetch = window.fetch;
+  const OriginalWebSocket = window.WebSocket;
+  let owner = '';
+  let chat;
+  let connection;
+  let replySurface = null;
+  const assert = (condition, label) => {
+    if (!condition) throw new Error(label);
+    results.push('PASS: ' + label);
+  };
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const waitFor = async (condition) => {
+    const deadline = Date.now() + 2000;
+    while (!condition()) {
+      if (Date.now() > deadline) throw new Error('Timed out waiting for fixture state: ' + JSON.stringify(requests));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  };
+  const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
+  const frame = (event_type, payload) => ({ kind: 'event', event: { event_type, payload } });
+  const reply = JSON.stringify({ messages: [{ role: 'assistant', content: 'Enrollment ready.' }] });
+  window.fetch = async (url, options = {}) => {
+    const path = new URL(url, location.href).pathname;
+    const body = options.body ? JSON.parse(options.body) : null;
+    requests.push({ path, body });
+    if (path === '/fixture/api/playground/threads') {
+      threads.push({ ...body, last_active: new Date().toISOString() });
+      return new Response(null, { status: 204 });
+    }
+    if (path === '/fixture/api/playground/agent-file-runs') {
+      const run = { ...body, run_id: 'run-' + (runs.length + 1), reply: replySurface ? JSON.stringify({ surface: replySurface, messages: [] }) : reply };
+      runs.push(run);
+      return json({ run_id: run.run_id });
+    }
+    const listMatch = path.match(/\/owners\/([^/]+)\/threads$/);
+    if (listMatch) return json({ threads: threads.filter((thread) => thread.owner_id === decodeURIComponent(listMatch[1])) });
+    const runsMatch = path.match(/\/owners\/([^/]+)\/threads\/([^/]+)\/runs$/);
+    if (runsMatch) return json({ runs: runs.filter((run) => run.owner_id === decodeURIComponent(runsMatch[1]) && run.thread_id === decodeURIComponent(runsMatch[2])) });
+    const eventsMatch = path.match(/\/runs\/([^/]+)\/events$/);
+    if (eventsMatch) {
+      const run = runs.find((item) => item.run_id === eventsMatch[1]);
+      const events = [frame('prompt_built', { user_prompt: run.user_prompt }), frame('llm_responded', { response_type: 'text', raw_response: run.reply })];
+      return new Response(events.map((event) => 'data: ' + JSON.stringify(event)).join('\n\n'));
+    }
+    throw new Error('Unexpected fixture request: ' + path);
+  };
+  window.WebSocket = class FixtureWebSocket {
+    static CLOSING = 2;
+    readyState = 1;
+    constructor(url) {
+      const runId = new URL(url).pathname.match(/\/runs\/([^/]+)\//)[1];
+      const run = runs.find((item) => item.run_id === runId);
+      queueMicrotask(() => {
+        this.onmessage({ data: JSON.stringify(frame('llm_responded', { response_type: 'text', raw_response: run.reply })) });
+        this.onmessage({ data: JSON.stringify({ kind: 'control', control: 'stream_end' }) });
+      });
+    }
+    close() { this.readyState = 3; }
+  };
+  const connect = (extraConfig = {}, extraOptions = {}) => {
+    chat = document.createElement('acp-chat-panel');
+    document.body.append(chat);
+    return connectAcpHarness({
+      chat,
+      getContext: () => ({ host: { userId: owner } }),
+      ...extraOptions,
+      config: { baseUrl: location.origin + '/fixture', bearerToken: 'synthetic-fixture-token', agentPath: 'fixture-agent', ...extraConfig },
+    });
+  };
+  try {
+    const misconfiguredChat = document.createElement('acp-chat-panel');
+    document.body.append(misconfiguredChat);
+    const misconfiguredConnection = connectAcpHarness({ chat: misconfiguredChat, environment: { AGENT_FILE_RUN_AGENT_PATH: 'fixture-agent' } });
+    await misconfiguredConnection.ready;
+    assert(misconfiguredChat.messages.some((message) => message.role === 'error' && message.text.includes('API URL is missing')), 'Missing API URL is reported in Chat without throwing during setup');
+    assert(requests.length === 0, 'Invalid API configuration prevents harness requests');
+    misconfiguredConnection.disconnect();
+    misconfiguredChat.remove();
+
+    const missingTokenChat = document.createElement('acp-chat-panel');
+    document.body.append(missingTokenChat);
+    const missingTokenConnection = connectAcpHarness({
+      chat: missingTokenChat,
+      environment: { AGENT_FILE_RUN_API_URL: location.origin + '/fixture', AGENT_FILE_RUN_AGENT_PATH: 'fixture-agent' },
+    });
+    await missingTokenConnection.ready;
+    assert(missingTokenChat.messages.some((message) => message.role === 'error' && message.text.includes('bearer token is missing')), 'Missing token source is reported in Chat before a request');
+    missingTokenConnection.disconnect();
+    missingTokenChat.remove();
+
+    connection = connect();
+    await connection.ready;
+    assert(requests.length === 0, 'No history request is made before authenticated identity exists');
+    owner = 'user-1';
+    chat.open = true;
+    await waitFor(() => chat.chatHistory.some((item) => item.id === 'existing-thread'));
+    assert(chat.chatHistory.some((item) => item.id === 'existing-thread'), 'Opening after delayed authentication reloads persisted Recent Chats');
+    chat.querySelector('[data-action="history"]').click();
+    assert(chat.textContent.includes('Previous enrollment'), 'Persisted conversation titles render in the chat panel');
+    const beforeReopen = requests.length;
+    chat.open = false;
+    await flush();
+    chat.open = true;
+    await waitFor(() => requests.length > beforeReopen);
+    assert(requests.length > beforeReopen, 'Reopening the panel refreshes history from the harness');
+    await connection.sendMessage('Enroll test student');
+    await flush();
+    const savedThreadId = connection.conversationId;
+    assert(threads.some((thread) => thread.thread_id === savedThreadId && thread.owner_id === owner), 'Sending a message persists the owner-scoped thread');
+    assert(runs.some((run) => run.thread_id === savedThreadId && run.owner_id === owner), 'Agent runs carry the same owner and thread IDs');
+    assert(chat.chatHistory.some((item) => item.id === savedThreadId), 'Current-session history includes the newly persisted conversation');
+    connection.disconnect();
+    chat.remove();
+    connection = connect();
+    await connection.ready;
+    assert(chat.chatHistory.some((item) => item.id === savedThreadId), 'A fresh panel and connector recover the previous conversation without browser storage');
+    assert(chat.chatHistory.some((item) => item.id === 'existing-thread'), 'Refresh retains older conversations alongside the newly created one');
+    chat.dispatchEvent(new CustomEvent('acp-restore-conversation', { detail: { conversationId: savedThreadId } }));
+    await waitFor(() => chat.messages.some((message) => message.role === 'assistant'));
+    assert(chat.messages.some((message) => message.role === 'user' && message.text.includes('Enroll test student')), 'Selecting a retained conversation restores its user messages');
+    assert(chat.messages.some((message) => message.role === 'assistant'), 'Selecting a retained conversation restores its assistant reply');
+    const beforeDisconnect = requests.length;
+    connection.disconnect();
+    chat.open = true;
+    await flush();
+    assert(requests.length === beforeDisconnect, 'Disconnected connectors stop observing panel opens');
+    chat.remove();
+    owner = 'context-user';
+    connection = connect({ getOwnerId: () => 'explicit-user' });
+    await connection.ready;
+    assert(requests[requests.length - 1].path.includes('/owners/explicit-user/'), 'Explicit owner resolvers take precedence over context identity');
+    connection.disconnect();
+    chat.remove();
+    owner = 'user-1';
+    const container = document.createElement('acp-dynamic-container');
+    container.title = 'Bulk student enrollment';
+    const assembler = document.createElement('acp-actions-pane');
+    document.body.append(container, assembler);
+    container.formSpec = { formId: 'buddy-enrol', title: 'Enrollment', fields: [] };
+    container.open = true;
+    assembler.title = 'Agent-provided activity title';
+    const buddy = container.querySelector('buddy-enrol-workspace-surface');
+    buddy.surface = {
+      type: 'buddy-enrol-workspace', formId: 'student-enroll', title: 'Enroll Multiple Students',
+      fields: [{ id: 'name', required: true }],
+      records: [{ id: 'student-1', values: { name: 'Alex' }, valid: false }],
+    };
+    assert(container.querySelector('.acp-container-header__title').textContent === 'Workspace' && buddy.querySelector('.buddy-ws-head h3').textContent === 'Enroll Multiple Students', 'Bulk enrollment content title does not replace the Workspace pane title');
+    connection = connect({}, { workspace: container, actions: assembler });
+    await connection.ready;
+    const input = buddy.querySelector('[name="name"]');
+    input.value = 'Blair';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    replySurface = { type: 'buddy-enrol-workspace', records: [{ id: 'student-1', valid: true }] };
+    buddy.querySelector('[data-action="check"]').click();
+    await waitFor(() => !chat.pending);
+    assert(container.querySelector('buddy-enrol-workspace-surface') === buddy, 'Validation replies without formId preserve the existing workspace element');
+    assert(buddy.records[0].name === 'Blair' && !buddy.querySelector('[data-action="submit-active"]').disabled, 'Connector validation echoes preserve edited values and enable Submit');
+    const validationRun = runs[runs.length - 1];
+    assert(validationRun.user_prompt.includes('Blair'), 'Connector validation requests contain the current edited field values');
+    buddy.querySelector('[data-action="submit-active"]').click();
+    assert(assembler.open && assembler.items.length === 1, 'Validation followed by Submit opens Assembler through the complete connector flow');
+    assert(assembler.querySelector('.acp-actions-header strong').textContent === 'Assembler', 'Harness activity titles do not rename the Assembler pane');
+    replySurface = { type: 'activity-log', title: 'Enrollment complete', items: [{ id: 'activity-1', text: 'Complete' }] };
+    await connection.sendMessage('Show activity');
+    assert(assembler.querySelector('.acp-actions-header strong').textContent === 'Assembler', 'Agent activity-log surface titles leave the Assembler header stable');
+    connection.disconnect();
+    document.querySelector('#results').textContent = results.join('\n') + '\nAll ' + results.length + ' checks passed.';
+    document.body.dataset.testResult = 'passed';
+  } catch (error) {
+    document.querySelector('#results').textContent = results.join('\n') + '\nFAIL: ' + error.message;
+    document.body.dataset.testResult = 'failed';
+    throw error;
+  } finally {
+    if (connection) connection.disconnect();
+    window.fetch = originalFetch;
+    window.WebSocket = OriginalWebSocket;
+  }
+</script>
+</html>
